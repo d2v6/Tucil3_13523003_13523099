@@ -1,35 +1,195 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState, useRef, useEffect } from "react";
+import DraggableCar from "./components/DraggableCar";
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+interface Car {
+  id: string;
+  width: number;
+  height: number;
+  isVertical: boolean;
+  cells: number;
 }
 
-export default App
+interface EdgeCell {
+  row: number;
+  col: number;
+}
+
+function App() {
+  const [boardWidth, setBoardWidth] = useState<number>(6);
+  const [boardHeight, setBoardHeight] = useState<number>(6);
+  const [gridSize, setgridSize] = useState<number>(80);
+  const [cars, setCars] = useState<Car[]>([]);
+  const [selectedEdgeCell, setSelectedEdgeCell] = useState<EdgeCell | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+
+  const totalBoardWidth = boardWidth + 2;
+  const totalBoardHeight = boardHeight + 2;
+
+  useEffect(() => {
+    const maxGridSize = 80;
+    const minGridSize = 32;
+    const maxBoard = 10;
+    const largest = Math.max(boardWidth, boardHeight);
+    const newGridSize = Math.round(maxGridSize - ((maxGridSize - minGridSize) * (largest - 3)) / (maxBoard - 3));
+    setgridSize(newGridSize);
+  }, [boardWidth, boardHeight]);
+
+  const isEdgeCell = (row: number, col: number) => {
+    return row === 0 || row === totalBoardHeight - 1 || col === 0 || col === totalBoardWidth - 1;
+  };
+
+  const isCornerCell = (row: number, col: number) => {
+    return (row === 0 && col === 0) || (row === 0 && col === totalBoardWidth - 1) || (row === totalBoardHeight - 1 && col === 0) || (row === totalBoardHeight - 1 && col === totalBoardWidth - 1);
+  };
+
+  const handleEdgeCellClick = (row: number, col: number) => {
+    if (isCornerCell(row, col)) return;
+    if (isEdgeCell(row, col)) {
+      setSelectedEdgeCell({ row, col });
+      console.log(`Selected edge cell at row: ${row}, col: ${col}`);
+    }
+  };
+
+  const renderGrid = () => {
+    const grid = [];
+    for (let row = 0; row < totalBoardHeight; row++) {
+      for (let col = 0; col < totalBoardWidth; col++) {
+        const isCorner = isCornerCell(row, col);
+        const isEdge = isEdgeCell(row, col);
+        const isSelected = selectedEdgeCell && selectedEdgeCell.row === row && selectedEdgeCell.col === col;
+
+        const dataAttributes = !isEdge
+          ? {
+              "data-row": row - 1,
+              "data-col": col - 1,
+            }
+          : {};
+
+        grid.push(
+          <div
+            key={`${row}-${col}`}
+            className={`border border-gray-300 ${!isCorner ? "cursor-pointer" : "cursor-default"}`}
+            style={{
+              width: gridSize,
+              height: gridSize,
+              backgroundColor: isCorner ? "gray" : isEdge ? (isSelected ? "yellow" : "red") : "white",
+            }}
+            onClick={isEdge && !isCorner ? () => handleEdgeCellClick(row, col) : undefined}
+            {...dataAttributes}
+          />
+        );
+      }
+    }
+    return grid;
+  };
+
+  const addCar = (cells: number, isVertical: boolean) => {
+    const newCar: Car = {
+      id: `car-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      width: isVertical ? 1 : cells,
+      height: isVertical ? cells : 1,
+      isVertical,
+      cells,
+    };
+    setCars([...cars, newCar]);
+  };
+
+  const boardWidthPx = boardWidth * gridSize;
+  const boardHeightPx = boardHeight * gridSize;
+  const totalBoardWidthPx = totalBoardWidth * gridSize;
+  const totalBoardHeightPx = totalBoardHeight * gridSize;
+
+  return (
+    <main className="flex flex-col items-center p-4 w-full min-h-screen bg-gray-100">
+      <h1 className="text-3xl font-bold mb-6 text-center">Unblock Car Game</h1>
+
+      <div className="mb-6 flex flex-col md:flex-row gap-4">
+        <div className="flex items-center">
+          <label htmlFor="width" className="mr-2 font-medium">
+            Width:
+          </label>
+          <input
+            id="width"
+            type="number"
+            min="3"
+            max="10"
+            value={boardWidth}
+            onChange={(e) => setBoardWidth(Math.max(3, Math.min(10, parseInt(e.target.value) || 3)))}
+            className="w-16 p-2 border border-gray-300 rounded"
+          />
+        </div>
+
+        <div className="flex items-center">
+          <label htmlFor="height" className="mr-2 font-medium">
+            Height:
+          </label>
+          <input
+            id="height"
+            type="number"
+            min="3"
+            max="10"
+            value={boardHeight}
+            onChange={(e) => setBoardHeight(Math.max(3, Math.min(10, parseInt(e.target.value) || 3)))}
+            className="w-16 p-2 border border-gray-300 rounded"
+          />
+        </div>
+
+        <button onClick={() => setCars([])} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
+          Clear Board
+        </button>
+      </div>
+
+      <div className="mb-8 relative">
+        <div
+          ref={boardRef}
+          className="grid  bg-white"
+          style={{
+            gridTemplateColumns: `repeat(${totalBoardWidth}, ${gridSize}px)`,
+            gridTemplateRows: `repeat(${totalBoardHeight}, ${gridSize}px)`,
+            width: totalBoardWidthPx,
+            height: totalBoardHeightPx,
+          }}
+        >
+          {renderGrid()}
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <h2 className="text-xl font-semibold mb-2 text-center">Available Cars</h2>
+        <div className="flex flex-wrap gap-4 justify-center">
+          <button onClick={() => addCar(2, false)} className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
+            Add 2×1 Car
+          </button>
+          <button onClick={() => addCar(3, false)} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">
+            Add 3×1 Car
+          </button>
+          <button onClick={() => addCar(2, true)} className="px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600">
+            Add 1×2 Car
+          </button>
+          <button onClick={() => addCar(3, true)} className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">
+            Add 1×3 Car
+          </button>
+        </div>
+      </div>
+
+      {cars.map((car) => (
+        <DraggableCar
+          key={car.id}
+          width={car.width * gridSize}
+          height={car.height * gridSize}
+          minTop={0}
+          maxTop={boardHeightPx - car.height * gridSize + 0.75 * gridSize}
+          minLeft={0}
+          maxLeft={boardWidthPx - car.width * gridSize + 0.75 * gridSize}
+          initialTop={boardHeightPx + 20 + Math.random() * 20}
+          initialLeft={(boardWidthPx - car.width * gridSize) / 2 + Math.random() * 40 - 20}
+          parentRef={boardRef}
+          onDragEnd={() => {}}
+          inputGridSize={gridSize}
+        />
+      ))}
+    </main>
+  );
+}
+
+export default App;
