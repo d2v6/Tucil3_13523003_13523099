@@ -1,5 +1,5 @@
 import { collapseBoard, getAllValidMoves, isSolutionFound, movePiece } from "../boardUtils";
-import { PrioQueue } from "../prioqueue";
+import { PrioQueue } from "../prioQueue";
 import type { Board, PieceMap, Move, Node} from "../types"
 
 export const ucs = (board: Board, pieces: PieceMap): {found: boolean, moveHistory: Move[]} => {
