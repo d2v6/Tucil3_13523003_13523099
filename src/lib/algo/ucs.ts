@@ -2,20 +2,23 @@ import { collapseBoard, getAllValidMoves, isSolutionFound, movePiece } from "../
 import { PrioQueue } from "../prioQueue";
 import type { Board, PieceMap, Move, Node} from "../types"
 
-export const ucs = (board: Board, pieces: PieceMap): {found: boolean, moveHistory: Move[]} => {
+export const ucs = (
+    board: Board, 
+    pieces: PieceMap
+): {found: boolean, moveHistory: Move[]} => {
     const openList = new PrioQueue<Node>((a, b) => a.f - b.f);
     const closedList = new Map<string, number>();
+    const initialG = 0;
 
     const initialNode: Node = {
         board: board,
         pieces: pieces,
-        f: 0,
-        g: 0,
+        f: initialG,
+        g: initialG,
         moveHistory: []
     };
 
     openList.push(initialNode);
-    closedList
 
     while (!openList.isEmpty()) {
         const currentNode = openList.pop();
