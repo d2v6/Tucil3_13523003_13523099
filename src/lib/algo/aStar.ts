@@ -2,19 +2,22 @@ import { collapseBoard, getAllValidMoves, isSolutionFound, movePiece } from "../
 import { PrioQueue } from "../prioQueue";
 import type { Board, PieceMap, Move, Node} from "../types"
 
-export const ucs = (
+export const aStar = (
     board: Board, 
-    pieces: PieceMap
+    pieces: PieceMap, 
+    heuristicFunction: (board: Board, pieces: PieceMap) => number
 ): {found: boolean, moveHistory: Move[]} => {
     const openList = new PrioQueue<Node>((a, b) => a.f - b.f);
     const closedList = new Map<string, number>();
     const initialG = 0;
+    const initialH = heuristicFunction(board, pieces);
 
     const initialNode: Node = {
         board: board,
         pieces: pieces,
-        f: initialG,
+        f: initialG + initialH,
         g: initialG,
+        h: initialH,
         moveHistory: []
     };
 
@@ -41,7 +44,8 @@ export const ucs = (
             const { board: newBoard, pieces: newPieces } = movePiece(currentNode.board, currentNode.pieces, validMove);
             const newBoardKey = collapseBoard(newBoard);
             const newGValue = currentNode.g! + 1;
-            const newFValue = newGValue;
+            const newHValue = heuristicFunction(newBoard, newPieces);
+            const newFValue = newGValue + newHValue;
             if (closedList.has(newBoardKey) && closedList.get(newBoardKey)! <= newGValue) {
                 continue;
             }
@@ -51,6 +55,7 @@ export const ucs = (
                 pieces: newPieces,
                 f: newFValue,
                 g: newGValue,
+                h: newHValue,
                 moveHistory: [...currentNode.moveHistory, validMove]
             };
             openList.push(newNode);

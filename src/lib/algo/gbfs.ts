@@ -8,8 +8,9 @@ export const gbfs = (
     heuristicFunction: (board: Board, pieces: PieceMap) => number
 ): {found: boolean, moveHistory: Move[]} => {
     const openList = new PrioQueue<Node>((a, b) => a.f - b.f);
-    const closedList = new Map<string, number>();
+    const closedList = new Set<string>();
     const initialH = heuristicFunction(board, pieces);
+
     const initialNode: Node = {
         board: board,
         pieces: pieces,
@@ -26,10 +27,10 @@ export const gbfs = (
             continue;
         }
         const boardKey = collapseBoard(currentNode.board);
-        if (closedList.has(boardKey) && closedList.get(boardKey)! < currentNode.f) {
+        if (closedList.has(boardKey)) {
             continue;
         }
-        closedList.set(boardKey, currentNode.f);
+        closedList.add(boardKey);
 
         if (isSolutionFound(currentNode.pieces)) {
             return {found: true, moveHistory: currentNode.moveHistory };
@@ -42,7 +43,7 @@ export const gbfs = (
             const newBoardKey = collapseBoard(newBoard);
             const newHValue = heuristicFunction(newBoard, newPieces);
             const newFValue = newHValue;
-            if (closedList.has(newBoardKey) && closedList.get(newBoardKey)! < newFValue) {
+            if (closedList.has(newBoardKey)) {
                 continue;
             }
 
