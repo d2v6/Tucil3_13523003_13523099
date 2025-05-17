@@ -27,3 +27,12 @@ export interface Move {
     direction: Direction;
     steps: number;
 }
+
+export interface Node {
+    board: Board;
+    pieces: PieceMap;
+    f: number;
+    g?: number;
+    h?: number;
+    moveHistory: Move[];
+}

@@ -1,22 +1,16 @@
 import { collapseBoard, getAllValidMoves, isSolutionFound, movePiece } from "../boardUtils";
 import { PrioQueue } from "../prioqueue";
-import type { Board, PieceMap, Move} from "../types"
-
-interface Node {
-    board: Board;
-    pieces: PieceMap;
-    cost: number;
-    moveHistory: Move[];
-}
+import type { Board, PieceMap, Move, Node} from "../types"
 
 export const ucs = (board: Board, pieces: PieceMap): {found: boolean, moveHistory: Move[]} => {
-    const openList = new PrioQueue<Node>((a, b) => a.cost - b.cost);
+    const openList = new PrioQueue<Node>((a, b) => a.f - b.f);
     const closedList = new Map<string, number>();
 
     const initialNode: Node = {
         board: board,
         pieces: pieces,
-        cost: 0,
+        f: 0,
+        g: 0,
         moveHistory: []
     };
 
@@ -29,10 +23,10 @@ export const ucs = (board: Board, pieces: PieceMap): {found: boolean, moveHistor
             continue;
         }
         const boardKey = collapseBoard(currentNode.board);
-        if (closedList.has(boardKey) && closedList.get(boardKey)! < currentNode.cost) {
+        if (closedList.has(boardKey) && closedList.get(boardKey)! < currentNode.f) {
             continue;
         }
-        closedList.set(boardKey, currentNode.cost);
+        closedList.set(boardKey, currentNode.f);
 
         if (isSolutionFound(currentNode.pieces)) {
             return {found: true, moveHistory: currentNode.moveHistory };
@@ -43,14 +37,17 @@ export const ucs = (board: Board, pieces: PieceMap): {found: boolean, moveHistor
         for (const validMove of validMoves) {
             const { board: newBoard, pieces: newPieces } = movePiece(currentNode.board, currentNode.pieces, validMove);
             const newBoardKey = collapseBoard(newBoard);
-            if (closedList.has(newBoardKey) && closedList.get(newBoardKey)! < currentNode.cost + 1) {
+            const newGValue = currentNode.g! + 1;
+            const newFValue = newGValue;
+            if (closedList.has(newBoardKey) && closedList.get(newBoardKey)! < newFValue) {
                 continue;
             }
 
             const newNode: Node = {
                 board: newBoard,
                 pieces: newPieces,
-                cost: currentNode.cost + 1,
+                f: newFValue,
+                g: newGValue,
                 moveHistory: [...currentNode.moveHistory, validMove]
             };
             openList.push(newNode);
