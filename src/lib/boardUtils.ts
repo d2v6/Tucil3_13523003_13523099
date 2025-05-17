@@ -6,11 +6,29 @@ export const cloneBoard = (board: Board): Board => ({
     grid: board.grid.map(row => [...row])
 });
 
+export const isNextToExit = (
+    row: number,
+    col: number,
+    exitRow: number,
+    exitCol: number,
+    orientation: "Horizontal" | "Vertical"
+): boolean => {
+    if (orientation === "Horizontal") {
+        return row === exitRow && Math.abs(col - exitCol) === 1;
+    } else {
+        return col === exitCol && Math.abs(row - exitRow) === 1;
+    }
+};
+
 export const getAllValidMoves = (board: Board, pieces: PieceMap): Move[] => {
     const results: Move[] = [];
 
+    const exitPiece = pieces["K"];
+    const exitRow = exitPiece.pos.row;
+    const exitCol = exitPiece.pos.col;
+
     Object.values(pieces).forEach(piece => {
-        if (piece.symbol = "K") {
+        if (piece.symbol === "K") {
             return;
         }
 
@@ -29,10 +47,11 @@ export const getAllValidMoves = (board: Board, pieces: PieceMap): Move[] => {
                 const currentCell = board.grid[row][leftmostCol - step];
                 if (currentCell === ".") {
                     results.push({ piece, direction: "Left", steps: step });
+
+                    if (piece.symbol === "P" && isNextToExit(row, leftmostCol - step, exitRow, exitCol, piece.orientation)) {
+                        break;
+                    }
                     step++;
-                } else if (currentCell === "K" && piece.symbol === "P") {
-                    results.push({ piece, direction: "Left", steps: step });
-                    break;
                 } else {
                     break;
                 }
@@ -44,10 +63,11 @@ export const getAllValidMoves = (board: Board, pieces: PieceMap): Move[] => {
                 const currentCell = board.grid[row][rightmostCol + step];
                 if (currentCell === ".") {
                     results.push({ piece, direction: "Right", steps: step });
+
+                    if (piece.symbol === "P" && isNextToExit(row, rightmostCol + step, exitRow, exitCol, piece.orientation)) {
+                        break;
+                    }
                     step++;
-                } else if (currentCell === "K" && piece.symbol === "P") {
-                    results.push({ piece, direction: "Right", steps: step });
-                    break;
                 } else {
                     break;
                 }
@@ -63,10 +83,11 @@ export const getAllValidMoves = (board: Board, pieces: PieceMap): Move[] => {
                 const currentCell = board.grid[topmostRow - step][col];
                 if (currentCell === ".") {
                     results.push({ piece, direction: "Up", steps: step });
+
+                    if (piece.symbol === "P" && isNextToExit(topmostRow - step, col, exitRow, exitCol, piece.orientation)) {
+                        break;
+                    }
                     step++;
-                } else if (currentCell === "K" && piece.symbol === "P") {
-                    results.push({ piece, direction: "Up", steps: step });
-                    break;
                 } else {
                     break;
                 }
@@ -78,18 +99,21 @@ export const getAllValidMoves = (board: Board, pieces: PieceMap): Move[] => {
                 const currentCell = board.grid[bottommostRow + step][col];
                 if (currentCell === ".") {
                     results.push({ piece, direction: "Down", steps: step });
+
+                    if (piece.symbol === "P" && isNextToExit(bottommostRow + step, col, exitRow, exitCol, piece.orientation)) {
+                        break;
+                    }
                     step++;
-                } else if (currentCell === "K" && piece.symbol === "P") {
-                    results.push({ piece, direction: "Down", steps: step });
-                    break;
                 } else {
                     break;
                 }
             }
         }
     });
+
     return results;
-}
+};
+
 
 export const movePiece = (board: Board, pieces: PieceMap, move: Move): { board: Board, pieces: PieceMap } => {
     const newBoard = cloneBoard(board);
@@ -160,16 +184,21 @@ export const isSolutionFound = (pieces: PieceMap): boolean => {
 
     if (orientation === "Horizontal") {
         if (pos.row === exitRow) {
-            if (exitCol >= pos.col && exitCol < pos.col + size) {
+            const leftEdge = pos.col;
+            const rightEdge = pos.col + size - 1;
+            if (exitCol >= rightEdge || exitCol <= leftEdge) {
                 return true;
             }
         }
     } else if (orientation === "Vertical") {
         if (pos.col === exitCol) {
-            if (exitRow >= pos.row && exitRow < pos.row + size) {
+            const topEdge = pos.row;
+            const bottomEdge = pos.row + size - 1;
+            if (exitRow >= bottomEdge || exitRow <= topEdge) {
                 return true;
             }
         }
     }
+
     return false;
 };
