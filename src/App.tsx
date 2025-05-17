@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import DraggableCar from "./components/DraggableCar";
+import { rules } from "./lib/constant/rules";
 
 interface Car {
   id: string;
   width: number;
   height: number;
   isVertical: boolean;
-  cells: number;
+  grids: number;
+  initialLeft: number;
+  initialTop: number;
 }
 
 interface EdgeCell {
@@ -46,7 +49,6 @@ function App() {
     if (isCornerCell(row, col)) return;
     if (isEdgeCell(row, col)) {
       setSelectedEdgeCell({ row, col });
-      console.log(`Selected edge cell at row: ${row}, col: ${col}`);
     }
   };
 
@@ -68,7 +70,7 @@ function App() {
         grid.push(
           <div
             key={`${row}-${col}`}
-            className={`border border-gray-300 ${!isCorner ? "cursor-pointer" : "cursor-default"}`}
+            className={`border border-gray-300 ${!isCorner ? "cursor-pointer" : "cursor-default"} rounded-lg`}
             style={{
               width: gridSize,
               height: gridSize,
@@ -83,15 +85,25 @@ function App() {
     return grid;
   };
 
-  const addCar = (cells: number, isVertical: boolean) => {
+  const addCar = (grids: number, isVertical: boolean) => {
     const newCar: Car = {
       id: `car-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      width: isVertical ? 1 : cells,
-      height: isVertical ? cells : 1,
+      width: isVertical ? 1 : grids,
+      height: isVertical ? grids : 1,
       isVertical,
-      cells,
+      grids,
+      initialLeft: 0,
+      initialTop: 0,
     };
     setCars([...cars, newCar]);
+  };
+
+  const updateCarPosition = (id: string, top: number, left: number) => {
+    setCars((prevCars) => prevCars.map((car) => (car.id === id ? { ...car, initialTop: top, initialLeft: left } : car)));
+  };
+
+  const deleteCarById = (id: string) => {
+    setCars((prevCars) => prevCars.filter((car) => car.id !== id));
   };
 
   const boardWidthPx = boardWidth * gridSize;
@@ -100,7 +112,14 @@ function App() {
   const totalBoardHeightPx = totalBoardHeight * gridSize;
 
   return (
-    <main className="flex flex-col items-center p-4 w-full min-h-screen bg-gray-100">
+    <main className="relative flex flex-col items-center p-4 w-full min-h-screen bg-gray-100">
+      <div className="absolute top-[40%] left-10 flex flex-col">
+        {rules.map((rule, index) => (
+          <p key={index}>
+            {index + 1}. {rule}
+          </p>
+        ))}
+      </div>
       <h1 className="text-3xl font-bold mb-6 text-center">Unblock Car Game</h1>
 
       <div className="mb-6 flex flex-col md:flex-row gap-4">
@@ -157,13 +176,13 @@ function App() {
       <div className="mb-4">
         <h2 className="text-xl font-semibold mb-2 text-center">Available Cars</h2>
         <div className="flex flex-wrap gap-4 justify-center">
-          <button onClick={() => addCar(2, false)} className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
+          <button onClick={() => addCar(2, false)} className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600">
             Add 2×1 Car
           </button>
           <button onClick={() => addCar(3, false)} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">
             Add 3×1 Car
           </button>
-          <button onClick={() => addCar(2, true)} className="px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600">
+          <button onClick={() => addCar(2, true)} className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
             Add 1×2 Car
           </button>
           <button onClick={() => addCar(3, true)} className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">
@@ -175,17 +194,19 @@ function App() {
       {cars.map((car) => (
         <DraggableCar
           key={car.id}
+          id={car.id}
           width={car.width * gridSize}
           height={car.height * gridSize}
           minTop={0}
-          maxTop={boardHeightPx - car.height * gridSize + 0.75 * gridSize}
+          maxTop={boardHeightPx - car.height * gridSize + 1.75 * gridSize}
           minLeft={0}
-          maxLeft={boardWidthPx - car.width * gridSize + 0.75 * gridSize}
-          initialTop={boardHeightPx + 20 + Math.random() * 20}
-          initialLeft={(boardWidthPx - car.width * gridSize) / 2 + Math.random() * 40 - 20}
+          maxLeft={boardWidthPx - car.width * gridSize + 1.75 * gridSize}
+          initialTop={car.initialTop ? car.initialTop : boardHeightPx + 20 + Math.random() * 20}
+          initialLeft={car.initialLeft ? car.initialLeft : (boardWidthPx - car.width * gridSize) / 2 + Math.random() * 40 - 20}
           parentRef={boardRef}
-          onDragEnd={() => {}}
+          onPositionChange={updateCarPosition}
           inputGridSize={gridSize}
+          deleteCarById={deleteCarById}
         />
       ))}
     </main>
