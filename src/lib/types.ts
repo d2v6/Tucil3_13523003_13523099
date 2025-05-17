@@ -12,7 +12,7 @@ export interface Position {
 export type Orientation = "Horizontal" | "Vertical" | "Unknown" // Unknown is for the exit
 
 export interface Piece {
-    symbol: string;
+    id: string;
     pos: Position; // topleftmost of the piece
     orientation: Orientation;
     size: number;

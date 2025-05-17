@@ -28,7 +28,7 @@ export const getAllValidMoves = (board: Board, pieces: PieceMap): Move[] => {
     const exitCol = exitPiece.pos.col;
 
     Object.values(pieces).forEach(piece => {
-        if (piece.symbol === "K") {
+        if (piece.id === "K") {
             return;
         }
 
@@ -48,7 +48,7 @@ export const getAllValidMoves = (board: Board, pieces: PieceMap): Move[] => {
                 if (currentCell === ".") {
                     results.push({ piece, direction: "Left", steps: step });
 
-                    if (piece.symbol === "P" && isNextToExit(row, leftmostCol - step, exitRow, exitCol, piece.orientation)) {
+                    if (piece.id === "P" && isNextToExit(row, leftmostCol - step, exitRow, exitCol, piece.orientation)) {
                         break;
                     }
                     step++;
@@ -64,7 +64,7 @@ export const getAllValidMoves = (board: Board, pieces: PieceMap): Move[] => {
                 if (currentCell === ".") {
                     results.push({ piece, direction: "Right", steps: step });
 
-                    if (piece.symbol === "P" && isNextToExit(row, rightmostCol + step, exitRow, exitCol, piece.orientation)) {
+                    if (piece.id === "P" && isNextToExit(row, rightmostCol + step, exitRow, exitCol, piece.orientation)) {
                         break;
                     }
                     step++;
@@ -84,7 +84,7 @@ export const getAllValidMoves = (board: Board, pieces: PieceMap): Move[] => {
                 if (currentCell === ".") {
                     results.push({ piece, direction: "Up", steps: step });
 
-                    if (piece.symbol === "P" && isNextToExit(topmostRow - step, col, exitRow, exitCol, piece.orientation)) {
+                    if (piece.id === "P" && isNextToExit(topmostRow - step, col, exitRow, exitCol, piece.orientation)) {
                         break;
                     }
                     step++;
@@ -100,7 +100,7 @@ export const getAllValidMoves = (board: Board, pieces: PieceMap): Move[] => {
                 if (currentCell === ".") {
                     results.push({ piece, direction: "Down", steps: step });
 
-                    if (piece.symbol === "P" && isNextToExit(bottommostRow + step, col, exitRow, exitCol, piece.orientation)) {
+                    if (piece.id === "P" && isNextToExit(bottommostRow + step, col, exitRow, exitCol, piece.orientation)) {
                         break;
                     }
                     step++;
@@ -152,15 +152,15 @@ export const movePiece = (board: Board, pieces: PieceMap, move: Move): { board: 
     // Save new positions
     for (let i = 0; i < currentPiece.size; i++) {
         if (currentPiece.orientation === "Horizontal") {
-            newBoard.grid[newRow][newCol + i] = currentPiece.symbol;
+            newBoard.grid[newRow][newCol + i] = currentPiece.id;
         } else if (currentPiece.orientation === "Vertical") {
-            newBoard.grid[newRow +i][newCol] = currentPiece.symbol;
+            newBoard.grid[newRow +i][newCol] = currentPiece.id;
         }
     }
 
     // Update map
     const newPieces = { ...pieces };
-    newPieces[currentPiece.symbol] = { ...currentPiece, pos: { row: newRow, col: newCol}};
+    newPieces[currentPiece.id] = { ...currentPiece, pos: { row: newRow, col: newCol}};
 
     return { board: newBoard, pieces: newPieces};
 }
