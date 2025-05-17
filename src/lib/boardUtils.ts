@@ -140,3 +140,36 @@ export const movePiece = (board: Board, pieces: PieceMap, move: Move): { board: 
 
     return { board: newBoard, pieces: newPieces};
 }
+
+export const collapseBoard = (board: Board): string => {
+    return board.grid.flat().join("");
+
+}
+
+export const isSolutionFound = (pieces: PieceMap): boolean => {
+    const primaryPiece = pieces["P"];
+    const exitPiece = pieces["K"];
+    if (!primaryPiece || !exitPiece) {
+        return false;
+    }
+
+    const exitRow = exitPiece.pos.row;
+    const exitCol = exitPiece.pos.col;
+
+    const { pos, size, orientation } = primaryPiece;
+
+    if (orientation === "Horizontal") {
+        if (pos.row === exitRow) {
+            if (exitCol >= pos.col && exitCol < pos.col + size) {
+                return true;
+            }
+        }
+    } else if (orientation === "Vertical") {
+        if (pos.col === exitCol) {
+            if (exitRow >= pos.row && exitRow < pos.row + size) {
+                return true;
+            }
+        }
+    }
+    return false;
+};
