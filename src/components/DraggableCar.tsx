@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 
 interface DraggableCarProps {
+  id: string;
   width: number;
   height: number;
   minTop: number;
@@ -9,12 +10,13 @@ interface DraggableCarProps {
   maxLeft: number;
   initialTop: number;
   initialLeft: number;
-  onDragEnd?: () => void;
+  onPositionChange?: (id: string, top: number, left: number) => void;
   parentRef: React.RefObject<HTMLDivElement | null>;
   inputGridSize: number;
+  deleteCarById: (id: string) => void;
 }
 
-const DraggableCar = ({ width, height, minTop, maxTop, minLeft, maxLeft, initialTop, initialLeft, onDragEnd, parentRef, inputGridSize }: DraggableCarProps) => {
+const DraggableCar = ({ id, width, height, minTop, maxTop, minLeft, maxLeft, initialTop, initialLeft, onPositionChange, parentRef, inputGridSize, deleteCarById }: DraggableCarProps) => {
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [dragging, setDragging] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -96,8 +98,11 @@ const DraggableCar = ({ width, height, minTop, maxTop, minLeft, maxLeft, initial
         const newTop = snapToGrid(prev.top, minTop, maxTop, false);
         const newLeft = snapToGrid(prev.left, minLeft, maxLeft, true);
         setTimeout(() => {
-          if (onDragEnd) {
-            onDragEnd();
+          const relativeTop = newTop - parentBounds.top - minTop;
+          const relativeLeft = newLeft - parentBounds.left - minLeft;
+
+          if (onPositionChange) {
+            onPositionChange(id, relativeTop, relativeLeft);
           }
         }, 100);
         return {
@@ -105,9 +110,10 @@ const DraggableCar = ({ width, height, minTop, maxTop, minLeft, maxLeft, initial
           left: newLeft,
         };
       }
+      deleteCarById(id);
       return prev;
     });
-  }, [minTop, maxTop, minLeft, maxLeft, snapToGrid, isWithinParentBounds, onDragEnd]);
+  }, [minTop, maxTop, minLeft, maxLeft, snapToGrid, isWithinParentBounds, id, onPositionChange, parentBounds, deleteCarById]);
 
   useEffect(() => {
     if (dragging) {
