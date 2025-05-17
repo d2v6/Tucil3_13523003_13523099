@@ -1,6 +1,6 @@
 import type { Board, PieceMap } from "../types"
 
-export const countUniqueBlockers = (board: Board, pieces: PieceMap): number => {
+export const blockingCars = (board: Board, pieces: PieceMap): number => {
     const primaryPiece = pieces["P"];
     const exitPiece = pieces["K"];
 
