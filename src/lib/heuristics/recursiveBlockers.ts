@@ -17,7 +17,7 @@ export const recursiveBlockers = (board: Board, pieces: PieceMap): number => {
         total += getRecursiveBlockValue(current, spaceForward, spaceBackward, board, pieces, visited);
     }
 
-    return total + 1;
+    return total;
 };
 
 const getRecursiveBlockValue = (
@@ -29,7 +29,7 @@ const getRecursiveBlockValue = (
     visited: Set<string>
 ): number => {
     visited.add(piece.id);
-    let value = 0;
+    let value = 1;
 
     for (const other of Object.values(pieces)) {
         if (visited.has(other.id) || other.id === piece.id || other.id === "K") {
@@ -57,7 +57,7 @@ const getRecursiveBlockValue = (
 
         value += Math.min(valueForward, valueBackward);
     }
-    return value + 1;
+    return value;
 };
 
 const estimateSpaceNeeded = (piece: Piece, blocker: Piece, forward: boolean): number => {

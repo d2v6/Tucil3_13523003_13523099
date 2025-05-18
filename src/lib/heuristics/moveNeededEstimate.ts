@@ -17,7 +17,7 @@ export const moveNeededEstimate = (board: Board, pieces: PieceMap): number => {
         total += getRecursiveBlockValue(current, spaceForward, spaceBackward, board, pieces, visited);
     }
 
-    return total + 1;
+    return total;
 };
 
 const getRecursiveBlockValue = (
