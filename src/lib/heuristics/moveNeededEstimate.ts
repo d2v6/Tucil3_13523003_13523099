@@ -1,6 +1,6 @@
 import type { Board, Piece, PieceMap } from "../types";
 
-export const recursiveBlockers = (board: Board, pieces: PieceMap): number => {
+export const moveNeededEstimate = (board: Board, pieces: PieceMap): number => {
     const visited = new Set<string>();
     const primaryPiece = pieces["P"];
     if (!primaryPiece) return 0;
@@ -29,7 +29,7 @@ const getRecursiveBlockValue = (
     visited: Set<string>
 ): number => {
     visited.add(piece.id);
-    let value = 0;
+    let cost = Math.min(spaceForward, spaceBackward);
 
     for (const other of Object.values(pieces)) {
         if (visited.has(other.id) || other.id === piece.id || other.id === "K") {
@@ -55,9 +55,9 @@ const getRecursiveBlockValue = (
             valueBackward = getRecursiveBlockValue(other, needForward, needBackward, board, pieces, visited);
         }
 
-        value += Math.min(valueForward, valueBackward);
+        cost += Math.min(valueForward, valueBackward);
     }
-    return value + 1;
+    return cost;
 };
 
 const estimateSpaceNeeded = (piece: Piece, blocker: Piece, forward: boolean): number => {

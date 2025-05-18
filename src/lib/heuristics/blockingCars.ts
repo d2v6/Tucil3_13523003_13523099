@@ -44,5 +44,5 @@ export const blockingCars = (board: Board, pieces: PieceMap): number => {
         }
     }
 
-    return blockers.size;
+    return blockers.size + 1; // +1 for car's final move
 };
