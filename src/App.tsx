@@ -10,6 +10,7 @@ interface Car {
   grids: number;
   initialLeft: number;
   initialTop: number;
+  isPrimary: boolean;
 }
 
 interface EdgeCell {
@@ -24,9 +25,14 @@ function App() {
   const [cars, setCars] = useState<Car[]>([]);
   const [selectedEdgeCell, setSelectedEdgeCell] = useState<EdgeCell | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
+  const [inputCarLength, setInputCarLength] = useState<number>(2);
+  const [inputCarOrientation, setInputCarOrientation] = useState<boolean>(false);
+  const [isPrimary, setIsPrimary] = useState<boolean>(false);
 
   const totalBoardWidth = boardWidth + 2;
   const totalBoardHeight = boardHeight + 2;
+
+  const primaryCar = cars.find((car) => car.isPrimary);
 
   useEffect(() => {
     const maxGridSize = 80;
@@ -85,7 +91,12 @@ function App() {
     return grid;
   };
 
-  const addCar = (grids: number, isVertical: boolean) => {
+  const addCar = (grids: number, isVertical: boolean, isPrimary: boolean) => {
+    if (isPrimary && primaryCar) {
+      alert("Only one primary car is allowed. Delete the existing primary car first.");
+      return;
+    }
+
     const newCar: Car = {
       id: `car-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       width: isVertical ? 1 : grids,
@@ -94,7 +105,9 @@ function App() {
       grids,
       initialLeft: 0,
       initialTop: 0,
+      isPrimary,
     };
+
     setCars([...cars, newCar]);
   };
 
@@ -124,9 +137,7 @@ function App() {
 
       <div className="mb-6 flex flex-col md:flex-row gap-4">
         <div className="flex items-center">
-          <label htmlFor="width" className="mr-2 font-medium">
-            Width:
-          </label>
+          <label className="mr-2 font-medium">Width:</label>
           <input
             id="width"
             type="number"
@@ -139,9 +150,7 @@ function App() {
         </div>
 
         <div className="flex items-center">
-          <label htmlFor="height" className="mr-2 font-medium">
-            Height:
-          </label>
+          <label className="mr-2 font-medium">Height:</label>
           <input
             id="height"
             type="number"
@@ -153,7 +162,12 @@ function App() {
           />
         </div>
 
-        <button onClick={() => setCars([])} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
+        <button
+          onClick={() => {
+            setCars([]);
+          }}
+          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+        >
           Clear Board
         </button>
       </div>
@@ -161,7 +175,7 @@ function App() {
       <div className="mb-8 relative">
         <div
           ref={boardRef}
-          className="grid  bg-white"
+          className="grid bg-white"
           style={{
             gridTemplateColumns: `repeat(${totalBoardWidth}, ${gridSize}px)`,
             gridTemplateRows: `repeat(${totalBoardHeight}, ${gridSize}px)`,
@@ -174,19 +188,48 @@ function App() {
       </div>
 
       <div className="mb-4">
-        <h2 className="text-xl font-semibold mb-2 text-center">Available Cars</h2>
+        <h2 className="text-xl font-semibold mb-2 text-center">Create Cars</h2>
         <div className="flex flex-wrap gap-4 justify-center">
-          <button onClick={() => addCar(2, false)} className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600">
-            Add 2×1 Car
-          </button>
-          <button onClick={() => addCar(3, false)} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">
-            Add 3×1 Car
-          </button>
-          <button onClick={() => addCar(2, true)} className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
-            Add 1×2 Car
-          </button>
-          <button onClick={() => addCar(3, true)} className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">
-            Add 1×3 Car
+          <div className="flex items-center">
+            <label className="mr-2 font-medium">Length:</label>
+            <input
+              id="length"
+              type="number"
+              min="2"
+              value={inputCarLength}
+              onChange={(e) => setInputCarLength(Math.max(2, Math.min(10, parseInt(e.target.value) || 2)))}
+              className="w-16 p-2 border border-gray-300 rounded"
+            />
+          </div>
+
+          <div className="flex items-center">
+            <label className="mr-2 font-medium">Orientation:</label>
+            <button
+              className="border border-gray-300 cursor-pointer p-2 rounded-lg"
+              onClick={() => {
+                setInputCarOrientation(!inputCarOrientation);
+              }}
+            >
+              {inputCarOrientation ? "Vertical" : "Horizontal"}
+            </button>
+          </div>
+
+          <div className="flex items-center">
+            <label className="mr-2 font-medium">Primary Car:</label>
+            <button
+              className={`border border-gray-300 cursor-pointer p-2 rounded-lg ${primaryCar && !isPrimary ? "opacity-50" : ""}`}
+              onClick={() => {
+                if (!primaryCar || isPrimary) {
+                  setIsPrimary(!isPrimary);
+                }
+              }}
+              disabled={primaryCar && !isPrimary}
+            >
+              {isPrimary ? "True" : "False"}
+            </button>
+          </div>
+          <button onClick={() => addCar(inputCarLength, inputCarOrientation, isPrimary)} className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">
+            Add Car
           </button>
         </div>
       </div>
@@ -207,6 +250,7 @@ function App() {
           onPositionChange={updateCarPosition}
           inputGridSize={gridSize}
           deleteCarById={deleteCarById}
+          isPrimary={car.isPrimary}
         />
       ))}
     </main>

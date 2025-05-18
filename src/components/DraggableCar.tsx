@@ -14,9 +14,10 @@ interface DraggableCarProps {
   parentRef: React.RefObject<HTMLDivElement | null>;
   inputGridSize: number;
   deleteCarById: (id: string) => void;
+  isPrimary: boolean;
 }
 
-const DraggableCar = ({ id, width, height, minTop, maxTop, minLeft, maxLeft, initialTop, initialLeft, onPositionChange, parentRef, inputGridSize, deleteCarById }: DraggableCarProps) => {
+const DraggableCar = ({ id, width, height, minTop, maxTop, minLeft, maxLeft, initialTop, initialLeft, onPositionChange, parentRef, inputGridSize, deleteCarById, isPrimary }: DraggableCarProps) => {
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [dragging, setDragging] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -132,20 +133,26 @@ const DraggableCar = ({ id, width, height, minTop, maxTop, minLeft, maxLeft, ini
 
   return (
     <div
-      className="absolute cursor-move rounded-lg border-2 border-blue-950 bg-blue-500"
+      className="absolute cursor-move rounded-lg p-1"
       style={{
         top: position.top,
         left: position.left,
         zIndex,
         width,
         height,
-        boxShadow: dragging ? "0 0 40px 10px red, 0 0 40px 0 yellow" : "0 0 20px 0 blue",
-        transition: "box-shadow 0.2s",
       }}
       onMouseDown={handleMouseDown}
       data-position={`${position.top},${position.left}`}
       data-parent-bounds={`${parentBounds.top}`}
-    ></div>
+    >
+      <div
+        className={`w-full h-full rounded-lg border-2 ${isPrimary ? "border-red-950 bg-red-500" : "border-blue-950 bg-blue-500"}`}
+        style={{
+          boxShadow: dragging ? (isPrimary ? "0 0 40px 10px blue" : "0 0 40px 10px red") : isPrimary ? "0 0 20px 0 red" : "0 0 20px 0 blue",
+          transition: "box-shadow 0.2s",
+        }}
+      ></div>
+    </div>
   );
 };
 
