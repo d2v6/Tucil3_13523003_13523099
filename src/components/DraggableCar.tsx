@@ -99,8 +99,8 @@ const DraggableCar = ({ id, width, height, minTop, maxTop, minLeft, maxLeft, ini
         const newTop = snapToGrid(prev.top, minTop, maxTop, false);
         const newLeft = snapToGrid(prev.left, minLeft, maxLeft, true);
         setTimeout(() => {
-          const relativeTop = newTop - parentBounds.top - minTop;
-          const relativeLeft = newLeft - parentBounds.left - minLeft;
+          const relativeTop = Math.round((newTop - parentBounds.top - minTop) / inputGridSize) - 1;
+          const relativeLeft = Math.round((newLeft - parentBounds.left - minLeft) / inputGridSize) - 1;
 
           if (onPositionChange) {
             onPositionChange(id, relativeTop, relativeLeft);
@@ -114,7 +114,7 @@ const DraggableCar = ({ id, width, height, minTop, maxTop, minLeft, maxLeft, ini
       deleteCarById(id);
       return prev;
     });
-  }, [minTop, maxTop, minLeft, maxLeft, snapToGrid, isWithinParentBounds, id, onPositionChange, parentBounds, deleteCarById]);
+  }, [minTop, maxTop, minLeft, maxLeft, snapToGrid, isWithinParentBounds, id, onPositionChange, parentBounds, deleteCarById, inputGridSize]);
 
   useEffect(() => {
     if (dragging) {

@@ -1,38 +1,31 @@
 import { useState, useRef, useEffect } from "react";
 import DraggableCar from "./components/DraggableCar";
+import ControlPanel from "./components/ControlPanel";
 import { rules } from "./lib/constant/rules";
-
-interface Car {
-  id: string;
-  width: number;
-  height: number;
-  isVertical: boolean;
-  grids: number;
-  initialLeft: number;
-  initialTop: number;
-  isPrimary: boolean;
-}
-
-interface EdgeCell {
-  row: number;
-  col: number;
-}
+import type { Car, EdgeGrid, Board, PieceMap, Move, Piece } from "./lib/types";
 
 function App() {
   const [boardWidth, setBoardWidth] = useState<number>(6);
   const [boardHeight, setBoardHeight] = useState<number>(6);
   const [gridSize, setgridSize] = useState<number>(80);
   const [cars, setCars] = useState<Car[]>([]);
-  const [selectedEdgeCell, setSelectedEdgeCell] = useState<EdgeCell | null>(null);
+  const [selectedEdgeGrid, setSelectedEdgeGrid] = useState<EdgeGrid | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const [inputCarLength, setInputCarLength] = useState<number>(2);
   const [inputCarOrientation, setInputCarOrientation] = useState<boolean>(false);
   const [isPrimary, setIsPrimary] = useState<boolean>(false);
+  const [exitRow, setExitRow] = useState<number>(0);
+  const [exitCol, setExitCol] = useState<number>(0);
+
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState<string>("aStar");
+  const [selectedHeuristic, setSelectedHeuristic] = useState<string>("combined");
+  const [solutionMoves, setSolutionMoves] = useState<Move[]>([]);
+  const [isSolving, setIsSolving] = useState<boolean>(false);
+  const [solutionStep, setSolutionStep] = useState<number>(0);
+  const [showSolution, setShowSolution] = useState<boolean>(false);
 
   const totalBoardWidth = boardWidth + 2;
   const totalBoardHeight = boardHeight + 2;
-
-  const primaryCar = cars.find((car) => car.isPrimary);
 
   useEffect(() => {
     const maxGridSize = 80;
@@ -43,7 +36,7 @@ function App() {
     setgridSize(newGridSize);
   }, [boardWidth, boardHeight]);
 
-  const isEdgeCell = (row: number, col: number) => {
+  const isEdgeGrid = (row: number, col: number) => {
     return row === 0 || row === totalBoardHeight - 1 || col === 0 || col === totalBoardWidth - 1;
   };
 
@@ -51,11 +44,22 @@ function App() {
     return (row === 0 && col === 0) || (row === 0 && col === totalBoardWidth - 1) || (row === totalBoardHeight - 1 && col === 0) || (row === totalBoardHeight - 1 && col === totalBoardWidth - 1);
   };
 
-  const handleEdgeCellClick = (row: number, col: number) => {
-    if (isCornerCell(row, col)) return;
-    if (isEdgeCell(row, col)) {
-      setSelectedEdgeCell({ row, col });
-    }
+  const ExitMarker = ({ position, gridSize }: { position: EdgeGrid | null; gridSize: number }) => {
+    if (!position) return null;
+
+    const style = {
+      position: "absolute" as const,
+      width: gridSize,
+      height: gridSize,
+      backgroundColor: "yellow",
+      border: "2px solid black",
+      borderRadius: "8px",
+      zIndex: 5,
+      top: position.row * gridSize,
+      left: position.col * gridSize,
+    };
+
+    return <div style={style} className="exit-marker" />;
   };
 
   const renderGrid = () => {
@@ -63,8 +67,7 @@ function App() {
     for (let row = 0; row < totalBoardHeight; row++) {
       for (let col = 0; col < totalBoardWidth; col++) {
         const isCorner = isCornerCell(row, col);
-        const isEdge = isEdgeCell(row, col);
-        const isSelected = selectedEdgeCell && selectedEdgeCell.row === row && selectedEdgeCell.col === col;
+        const isEdge = isEdgeGrid(row, col);
 
         const dataAttributes = !isEdge
           ? {
@@ -76,13 +79,12 @@ function App() {
         grid.push(
           <div
             key={`${row}-${col}`}
-            className={`border border-gray-300 ${!isCorner ? "cursor-pointer" : "cursor-default"} rounded-lg`}
+            className="border border-gray-300  rounded-lg"
             style={{
               width: gridSize,
               height: gridSize,
-              backgroundColor: isCorner ? "gray" : isEdge ? (isSelected ? "yellow" : "red") : "white",
+              backgroundColor: isCorner || isEdge ? "gray" : "white",
             }}
-            onClick={isEdge && !isCorner ? () => handleEdgeCellClick(row, col) : undefined}
             {...dataAttributes}
           />
         );
@@ -91,24 +93,16 @@ function App() {
     return grid;
   };
 
-  const addCar = (grids: number, isVertical: boolean, isPrimary: boolean) => {
-    if (isPrimary && primaryCar) {
-      alert("Only one primary car is allowed. Delete the existing primary car first.");
-      return;
+  const getRandomCharacter = () => {
+    const excludedChars = ["K", "P", ".", " "];
+    const usedChars = cars.map((car) => car.id);
+
+    for (let charCode = 65; charCode <= 90; charCode++) {
+      const letter = String.fromCharCode(charCode);
+      if (!excludedChars.includes(letter) && !usedChars.includes(letter)) {
+        return letter;
+      }
     }
-
-    const newCar: Car = {
-      id: `car-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      width: isVertical ? 1 : grids,
-      height: isVertical ? grids : 1,
-      isVertical,
-      grids,
-      initialLeft: 0,
-      initialTop: 0,
-      isPrimary,
-    };
-
-    setCars([...cars, newCar]);
   };
 
   const updateCarPosition = (id: string, top: number, left: number) => {
@@ -119,60 +113,124 @@ function App() {
     setCars((prevCars) => prevCars.filter((car) => car.id !== id));
   };
 
+  const convertCarsToBoard = (): { board: Board; pieces: PieceMap; overlaps: boolean } => {
+    const grid: string[][] = Array(boardHeight)
+      .fill(null)
+      .map(() => Array(boardWidth).fill("."));
+
+    const piecesMap: PieceMap = {};
+    let hasOverlaps = false;
+
+    if (selectedEdgeGrid) {
+      const exitPiece: Piece = {
+        id: "K",
+        pos: {
+          row: selectedEdgeGrid.row - 1,
+          col: selectedEdgeGrid.col - 1,
+        },
+        orientation: "Unknown",
+        size: 1,
+      };
+      piecesMap["K"] = exitPiece;
+
+      if (exitPiece.pos.row >= 0 && exitPiece.pos.row < boardHeight && exitPiece.pos.col >= 0 && exitPiece.pos.col < boardWidth) {
+        grid[exitPiece.pos.row][exitPiece.pos.col] = "K";
+      }
+    }
+
+    for (const car of cars) {
+      const piece: Piece = {
+        id: car.id,
+        pos: {
+          row: car.initialTop,
+          col: car.initialLeft,
+        },
+        orientation: car.isVertical ? "Vertical" : "Horizontal",
+        size: car.size,
+      };
+      piecesMap[car.id] = piece;
+
+      for (let i = 0; i < car.size; i++) {
+        const row = car.isVertical ? car.initialTop + i : car.initialTop;
+        const col = car.isVertical ? car.initialLeft : car.initialLeft + i;
+
+        if (grid[row][col] !== ".") {
+          hasOverlaps = true;
+        }
+        grid[row][col] = car.id;
+      }
+    }
+
+    return {
+      board: {
+        width: boardWidth,
+        height: boardHeight,
+        grid,
+      },
+      pieces: piecesMap,
+      overlaps: hasOverlaps,
+    };
+  };
+
   const boardWidthPx = boardWidth * gridSize;
   const boardHeightPx = boardHeight * gridSize;
   const totalBoardWidthPx = totalBoardWidth * gridSize;
   const totalBoardHeightPx = totalBoardHeight * gridSize;
 
   return (
-    <main className="relative flex flex-col items-center p-4 w-full min-h-screen bg-gray-100">
-      <div className="absolute top-[40%] left-10 flex flex-col">
-        {rules.map((rule, index) => (
-          <p key={index}>
-            {index + 1}. {rule}
-          </p>
-        ))}
-      </div>
-      <h1 className="text-3xl font-bold mb-6 text-center">Unblock Car Game</h1>
-
-      <div className="mb-6 flex flex-col md:flex-row gap-4">
-        <div className="flex items-center">
-          <label className="mr-2 font-medium">Width:</label>
-          <input
-            id="width"
-            type="number"
-            min="3"
-            max="10"
-            value={boardWidth}
-            onChange={(e) => setBoardWidth(Math.max(3, Math.min(10, parseInt(e.target.value) || 3)))}
-            className="w-16 p-2 border border-gray-300 rounded"
-          />
+    <main className="relative flex flex-row  items-center p-4 w-full min-h-screen bg-gray-100">
+      <div className="w-full flex flex-col items-center justify-center">
+        <h1 className="text-3xl font-bold mb-6 text-center">Unblock Car Game</h1>
+        <ControlPanel
+          boardWidth={boardWidth}
+          setBoardWidth={setBoardWidth}
+          boardHeight={boardHeight}
+          setBoardHeight={setBoardHeight}
+          gridSize={gridSize}
+          cars={cars}
+          setCars={setCars}
+          selectedEdgeGrid={selectedEdgeGrid}
+          setSelectedEdgeGrid={setSelectedEdgeGrid}
+          totalBoardWidth={totalBoardWidth}
+          totalBoardHeight={totalBoardHeight}
+          inputCarLength={inputCarLength}
+          setInputCarLength={setInputCarLength}
+          inputCarOrientation={inputCarOrientation}
+          setInputCarOrientation={setInputCarOrientation}
+          isPrimary={isPrimary}
+          setIsPrimary={setIsPrimary}
+          exitRow={exitRow}
+          setExitRow={setExitRow}
+          exitCol={exitCol}
+          setExitCol={setExitCol}
+          selectedAlgorithm={selectedAlgorithm}
+          setSelectedAlgorithm={setSelectedAlgorithm}
+          selectedHeuristic={selectedHeuristic}
+          setSelectedHeuristic={setSelectedHeuristic}
+          solutionMoves={solutionMoves}
+          setSolutionMoves={setSolutionMoves}
+          isSolving={isSolving}
+          setIsSolving={setIsSolving}
+          solutionStep={solutionStep}
+          setSolutionStep={setSolutionStep}
+          showSolution={showSolution}
+          setShowSolution={setShowSolution}
+          convertCarsToBoard={convertCarsToBoard}
+          getRandomCharacter={getRandomCharacter}
+        />
+        <div className="flex flex-col items-center justify-center">
+          <h2 className="font-bold text-3xl">Rules</h2>
+          <div>
+            {rules.map((rule, index) => (
+              <p key={index}>
+                {index + 1}. {rule}
+              </p>
+            ))}
+          </div>
         </div>
-
-        <div className="flex items-center">
-          <label className="mr-2 font-medium">Height:</label>
-          <input
-            id="height"
-            type="number"
-            min="3"
-            max="10"
-            value={boardHeight}
-            onChange={(e) => setBoardHeight(Math.max(3, Math.min(10, parseInt(e.target.value) || 3)))}
-            className="w-16 p-2 border border-gray-300 rounded"
-          />
-        </div>
-
-        <button
-          onClick={() => {
-            setCars([]);
-          }}
-          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-        >
-          Clear Board
-        </button>
       </div>
 
-      <div className="mb-8 relative">
+      <div className="mb-8 relative w-full flex items-center justify-center">
         <div
           ref={boardRef}
           className="grid bg-white"
@@ -181,56 +239,11 @@ function App() {
             gridTemplateRows: `repeat(${totalBoardHeight}, ${gridSize}px)`,
             width: totalBoardWidthPx,
             height: totalBoardHeightPx,
+            position: "relative",
           }}
         >
           {renderGrid()}
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <h2 className="text-xl font-semibold mb-2 text-center">Create Cars</h2>
-        <div className="flex flex-wrap gap-4 justify-center">
-          <div className="flex items-center">
-            <label className="mr-2 font-medium">Length:</label>
-            <input
-              id="length"
-              type="number"
-              min="2"
-              value={inputCarLength}
-              onChange={(e) => setInputCarLength(Math.max(2, Math.min(10, parseInt(e.target.value) || 2)))}
-              className="w-16 p-2 border border-gray-300 rounded"
-            />
-          </div>
-
-          <div className="flex items-center">
-            <label className="mr-2 font-medium">Orientation:</label>
-            <button
-              className="border border-gray-300 cursor-pointer p-2 rounded-lg"
-              onClick={() => {
-                setInputCarOrientation(!inputCarOrientation);
-              }}
-            >
-              {inputCarOrientation ? "Vertical" : "Horizontal"}
-            </button>
-          </div>
-
-          <div className="flex items-center">
-            <label className="mr-2 font-medium">Primary Car:</label>
-            <button
-              className={`border border-gray-300 cursor-pointer p-2 rounded-lg ${primaryCar && !isPrimary ? "opacity-50" : ""}`}
-              onClick={() => {
-                if (!primaryCar || isPrimary) {
-                  setIsPrimary(!isPrimary);
-                }
-              }}
-              disabled={primaryCar && !isPrimary}
-            >
-              {isPrimary ? "True" : "False"}
-            </button>
-          </div>
-          <button onClick={() => addCar(inputCarLength, inputCarOrientation, isPrimary)} className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">
-            Add Car
-          </button>
+          <ExitMarker position={selectedEdgeGrid} gridSize={gridSize} />
         </div>
       </div>
 
@@ -238,14 +251,14 @@ function App() {
         <DraggableCar
           key={car.id}
           id={car.id}
-          width={car.width * gridSize}
-          height={car.height * gridSize}
+          width={car.isVertical ? gridSize : car.size * gridSize}
+          height={car.isVertical ? car.size * gridSize : gridSize}
           minTop={0}
-          maxTop={boardHeightPx - car.height * gridSize + 1.75 * gridSize}
+          maxTop={boardHeightPx - (car.isVertical ? car.size : 1) * gridSize + 1.75 * gridSize}
           minLeft={0}
-          maxLeft={boardWidthPx - car.width * gridSize + 1.75 * gridSize}
-          initialTop={car.initialTop ? car.initialTop : boardHeightPx + 20 + Math.random() * 20}
-          initialLeft={car.initialLeft ? car.initialLeft : (boardWidthPx - car.width * gridSize) / 2 + Math.random() * 40 - 20}
+          maxLeft={boardWidthPx - (car.isVertical ? 1 : car.size) * gridSize + 1.75 * gridSize}
+          initialTop={(car.initialTop + 1) * gridSize}
+          initialLeft={(car.initialLeft + 1) * gridSize}
           parentRef={boardRef}
           onPositionChange={updateCarPosition}
           inputGridSize={gridSize}
