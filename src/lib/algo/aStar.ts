@@ -6,7 +6,10 @@ export const aStar = (
     board: Board, 
     pieces: PieceMap, 
     heuristicFunction: (board: Board, pieces: PieceMap) => number
-): {found: boolean, moveHistory: Move[]} => {
+): {found: boolean, moveHistory: Move[], nodesVisited: number, timeTaken: number} => {
+    const startTime = performance.now();
+    let nodesVisited = 0;
+    
     const openList = new PrioQueue<Node>((a, b) => a.f - b.f);
     const closedList = new Map<string, number>();
     const initialG = 0;
@@ -28,6 +31,9 @@ export const aStar = (
         if (!currentNode) {
             continue;
         }
+        
+        nodesVisited++;
+        
         const boardKey = collapseBoard(currentNode.board);
         if (closedList.has(boardKey) && closedList.get(boardKey)! <= currentNode.g!) {
             continue;
@@ -35,7 +41,13 @@ export const aStar = (
         closedList.set(boardKey, currentNode.g!);
 
         if (isSolutionFound(currentNode.pieces)) {
-            return {found: true, moveHistory: currentNode.moveHistory };
+            const timeTaken = performance.now() - startTime;
+            return {
+                found: true, 
+                moveHistory: currentNode.moveHistory,
+                nodesVisited,
+                timeTaken
+            };
         }
 
         const validMoves = getAllValidMoves(currentNode.board, currentNode.pieces);
@@ -61,5 +73,12 @@ export const aStar = (
             openList.push(newNode);
         }
     }
-    return {found: false, moveHistory: [] };
-} 
+    
+    const timeTaken = performance.now() - startTime;
+    return {
+        found: false, 
+        moveHistory: [],
+        nodesVisited,
+        timeTaken
+    };
+}

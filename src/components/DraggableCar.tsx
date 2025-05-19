@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import type { Direction } from "../lib/types";
 
 interface DraggableCarProps {
   id: string;
@@ -15,14 +16,36 @@ interface DraggableCarProps {
   inputGridSize: number;
   deleteCarById: (id: string) => void;
   isPrimary: boolean;
+  moveDirection?: Direction | null;
+  moveSteps?: number;
+  isExecutingMove?: boolean;
 }
 
-const DraggableCar = ({ id, width, height, minTop, maxTop, minLeft, maxLeft, initialTop, initialLeft, onPositionChange, parentRef, inputGridSize, deleteCarById, isPrimary }: DraggableCarProps) => {
+const DraggableCar = ({
+  id,
+  width,
+  height,
+  minTop,
+  maxTop,
+  minLeft,
+  maxLeft,
+  initialTop,
+  initialLeft,
+  onPositionChange,
+  parentRef,
+  inputGridSize,
+  deleteCarById,
+  isPrimary,
+  moveDirection,
+  moveSteps,
+  isExecutingMove,
+}: DraggableCarProps) => {
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [dragging, setDragging] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [parentBounds, setParentBounds] = useState({ top: 0, left: 0 });
   const [zIndex, setZIndex] = useState(1);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     if (parentRef.current) {
@@ -60,6 +83,7 @@ const DraggableCar = ({ id, width, height, minTop, maxTop, minLeft, maxLeft, ini
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      if (isAnimating) return;
       setDragging(true);
       setOffset({
         x: e.clientX - position.left,
@@ -67,7 +91,7 @@ const DraggableCar = ({ id, width, height, minTop, maxTop, minLeft, maxLeft, ini
       });
       setZIndex(10);
     },
-    [position]
+    [position, isAnimating]
   );
 
   const handleMouseMove = useCallback(
@@ -131,27 +155,94 @@ const DraggableCar = ({ id, width, height, minTop, maxTop, minLeft, maxLeft, ini
     };
   }, [dragging, handleMouseMove, handleMouseUp]);
 
+  useEffect(() => {
+    if (isExecutingMove && moveDirection && moveSteps && moveSteps > 0) {
+      setIsAnimating(true);
+      setZIndex(5);
+
+      let newTop = position.top;
+      let newLeft = position.left;
+
+      switch (moveDirection) {
+        case "Up":
+          newTop -= moveSteps * inputGridSize;
+          break;
+        case "Down":
+          newTop += moveSteps * inputGridSize;
+          break;
+        case "Left":
+          newLeft -= moveSteps * inputGridSize;
+          break;
+        case "Right":
+          newLeft += moveSteps * inputGridSize;
+          break;
+      }
+
+      newTop = Math.max(parentBounds.top + minTop, Math.min(parentBounds.top + maxTop, newTop));
+      newLeft = Math.max(parentBounds.left + minLeft, Math.min(parentBounds.left + maxLeft, newLeft));
+
+      setTimeout(() => {
+        setPosition({
+          top: newTop,
+          left: newLeft,
+        });
+
+        setTimeout(() => {
+          const snappedTop = snapToGrid(newTop, minTop, maxTop, false);
+          const snappedLeft = snapToGrid(newLeft, minLeft, maxLeft, true);
+
+          setPosition({
+            top: snappedTop,
+            left: snappedLeft,
+          });
+
+          const relativeTop = Math.round((snappedTop - parentBounds.top - minTop) / inputGridSize) - 1;
+          const relativeLeft = Math.round((snappedLeft - parentBounds.left - minLeft) / inputGridSize) - 1;
+
+          if (onPositionChange) {
+            onPositionChange(id, relativeTop, relativeLeft);
+            setIsAnimating(false);
+            setZIndex(1);
+          }
+        }, 300);
+      }, 50);
+    }
+  }, [isExecutingMove, moveDirection, moveSteps, inputGridSize, position, parentBounds, minTop, maxTop, minLeft, maxLeft, onPositionChange, id, snapToGrid]);
+
   return (
     <div
-      className="absolute cursor-move rounded-lg p-1"
+      className="absolute cursor-move rounded-lg"
       style={{
         top: position.top,
         left: position.left,
         zIndex,
         width,
         height,
+        transition: isAnimating ? "top 0.3s ease-out, left 0.3s ease-out" : "none",
       }}
       onMouseDown={handleMouseDown}
       data-position={`${position.top},${position.left}`}
       data-parent-bounds={`${parentBounds.top}`}
     >
       <div
-        className={`w-full h-full rounded-lg border-2 ${isPrimary ? "border-red-950 bg-red-500" : "border-blue-950 bg-blue-500"}`}
+        className={`text-white flex justify-center items-center text-center w-full h-full rounded-lg border-2 ${isPrimary ? "border-red-950 bg-red-500" : "border-blue-950 bg-blue-500"}`}
         style={{
-          boxShadow: dragging ? (isPrimary ? "0 0 40px 10px blue" : "0 0 40px 10px red") : isPrimary ? "0 0 20px 0 red" : "0 0 20px 0 blue",
+          boxShadow: isAnimating
+            ? isPrimary
+              ? "0 0 40px 10px gold"
+              : "0 0 40px 10px cyan"
+            : dragging
+            ? isPrimary
+              ? "0 0 40px 10px blue"
+              : "0 0 40px 10px red"
+            : isPrimary
+            ? "0 0 20px 0 red"
+            : "0 0 20px 0 blue",
           transition: "box-shadow 0.2s",
         }}
-      ></div>
+      >
+        {id}
+      </div>
     </div>
   );
 };

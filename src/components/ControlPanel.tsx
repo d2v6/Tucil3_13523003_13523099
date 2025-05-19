@@ -1,4 +1,14 @@
 import type { Car, EdgeGrid, PieceMap, Board, Move } from "../lib/types";
+import { parseFileContents } from "../lib/helpers/validateInput";
+import { aStar } from "../lib/algo/aStar";
+import { gbfs } from "../lib/algo/gbfs";
+import { fringeSearch } from "../lib/algo/fringeSearch";
+import { ucs } from "../lib/algo/ucs";
+import { distanceToExit } from "../lib/heuristics/distanceToExit";
+import { blockingCars } from "../lib/heuristics/blockingCars";
+import { recursiveBlockers } from "../lib/heuristics/recursiveBlockers";
+import { combinedHeuristic } from "../lib/heuristics/combinedHeuristic";
+import { moveNeededEstimate } from "../lib/heuristics/moveNeededEstimate";
 
 interface ControlPanelProps {
   boardWidth: number;
@@ -36,6 +46,13 @@ interface ControlPanelProps {
   setShowSolution: (show: boolean) => void;
   convertCarsToBoard: () => { board: Board; pieces: PieceMap; overlaps: boolean };
   getRandomCharacter: () => string | undefined;
+  isAnimatingStep?: boolean;
+  setIsAnimatingStep?: (isAnimating: boolean) => void;
+  isAutoPlaying?: boolean;
+  startAutoPlay?: () => void;
+  stopAutoPlay?: () => void;
+  originalBoardState: Car[];
+  setOriginalBoardState: (cars: Car[]) => void;
 }
 
 const ControlPanel = ({
@@ -73,6 +90,13 @@ const ControlPanel = ({
   setShowSolution,
   convertCarsToBoard,
   getRandomCharacter,
+  isAnimatingStep,
+  setIsAnimatingStep,
+  isAutoPlaying,
+  startAutoPlay,
+  stopAutoPlay,
+  originalBoardState,
+  setOriginalBoardState,
 }: ControlPanelProps) => {
   const primaryCar = cars.find((car) => car.isPrimary);
 
@@ -88,8 +112,6 @@ const ControlPanel = ({
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      console.log("File contents:", text);
-
       const result = parseFileContents(text);
 
       if (!result.success) {
@@ -111,8 +133,10 @@ const ControlPanel = ({
       return;
     }
 
-    if (cars.length > 24) {
-      alert("Max cars reached");
+    const normalCarsCount = cars.filter((car) => !car.isPrimary).length;
+
+    if (!isPrimary && normalCarsCount >= 24) {
+      alert("Maximum of 24 normal cars reached");
       return;
     }
 
@@ -146,6 +170,8 @@ const ControlPanel = ({
       return;
     }
 
+    setOriginalBoardState([...cars]);
+
     setIsSolving(true);
     setSolutionMoves([]);
     setSolutionStep(0);
@@ -164,10 +190,8 @@ const ControlPanel = ({
       case "moveNeeded":
         heuristicFunction = moveNeededEstimate;
         break;
-      case "combined":
       default:
         heuristicFunction = combinedHeuristic;
-        break;
     }
 
     let result;
@@ -182,13 +206,9 @@ const ControlPanel = ({
         case "ucs":
           result = ucs(board, pieces);
           break;
-        case "aStar":
         default:
           result = aStar(board, pieces, heuristicFunction);
-          break;
       }
-
-      console.log(result);
 
       if (result && result.found) {
         setSolutionMoves(result.moveHistory);
@@ -206,56 +226,28 @@ const ControlPanel = ({
   };
 
   return (
-    <div className="w-full flex flex-col items-center mb-6">
-      <div className="mb-6 flex flex-wrap justify-center gap-4">
-        <div className="flex justify-center">
-          <label className="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-            Upload .txt File
+    <div className="w-full max-w-4xl bg-white p-4 rounded-lg shadow-md">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 border-b pb-3">
+        <div className="flex items-center gap-2">
+          <label className="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
+            Upload
             <input type="file" accept=".txt,text/plain" onChange={handleFileUpload} className="hidden" />
           </label>
-        </div>
-        <div className="flex items-center">
-          <label className="mr-2 font-medium">Board Width:</label>
-          <input
-            id="width"
-            type="number"
-            min="3"
-            max="10"
-            value={boardWidth}
-            onChange={(e) => setBoardWidth(Math.max(3, Math.min(10, parseInt(e.target.value) || 3)))}
-            className="w-16 p-2 border border-gray-300 rounded"
-          />
+
+          <div className="flex items-center">
+            <label className="mr-1 text-sm">W:</label>
+            <input type="number" min="2" value={boardWidth} onChange={(e) => setBoardWidth(parseInt(e.target.value))} className="w-12 p-1 border border-gray-300 rounded text-sm" />
+          </div>
+
+          <div className="flex items-center">
+            <label className="mr-1 text-sm">H:</label>
+            <input type="number" min="2" value={boardHeight} onChange={(e) => setBoardHeight(parseInt(e.target.value))} className="w-12 p-1 border border-gray-300 rounded text-sm" />
+          </div>
         </div>
 
-        <div className="flex items-center">
-          <label className="mr-2 font-medium">Board Height:</label>
-          <input
-            id="height"
-            type="number"
-            min="3"
-            max="10"
-            value={boardHeight}
-            onChange={(e) => setBoardHeight(Math.max(3, Math.min(10, parseInt(e.target.value) || 3)))}
-            className="w-16 p-2 border border-gray-300 rounded"
-          />
-        </div>
-
-        <button
-          onClick={() => {
-            setCars([]);
-            setSelectedEdgeGrid(null);
-          }}
-          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-        >
-          Clear Board
-        </button>
-      </div>
-
-      <div className="mb-6 flex flex-wrap justify-center gap-4  flex-col">
-        <p className="text-xl font-semibold mb-2 text-center">Input Exit</p>
-        <div className="flex items-center">
-          <div className="flex items-center gap-2">
-            <label className="font-medium">Exit Row:</label>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center">
+            <label className="mr-1 text-sm">Exit:</label>
             <input
               type="number"
               min={0}
@@ -264,25 +256,21 @@ const ControlPanel = ({
               onChange={(e) => {
                 const val = Math.max(0, Math.min(totalBoardHeight - 1, parseInt(e.target.value) || 0));
                 setExitRow(val);
-
                 let newCol = exitCol;
-
                 if (val !== 0 && val !== totalBoardHeight - 1) {
                   if (exitCol !== 0 && exitCol !== totalBoardWidth - 1) {
                     newCol = 0;
                   }
                 }
-
                 if ((val === 0 || val === totalBoardHeight - 1) && (newCol === 0 || newCol === totalBoardWidth - 1)) {
                   newCol = Math.min(Math.max(1, newCol), totalBoardWidth - 2);
                 }
-
                 setExitCol(newCol);
                 setSelectedEdgeGrid({ row: val, col: newCol });
               }}
-              className="w-16 p-2 border border-gray-300 rounded"
+              className="w-12 p-1 border border-gray-300 rounded text-sm"
             />
-            <label className="font-medium">Exit Col:</label>
+            <span className="mx-1 text-sm">×</span>
             <input
               type="number"
               min={0}
@@ -291,149 +279,191 @@ const ControlPanel = ({
               onChange={(e) => {
                 const val = Math.max(0, Math.min(totalBoardWidth - 1, parseInt(e.target.value) || 0));
                 setExitCol(val);
-
                 let newRow = exitRow;
-
                 if (val !== 0 && val !== totalBoardWidth - 1) {
                   if (exitRow !== 0 && exitRow !== totalBoardHeight - 1) {
                     newRow = 0;
                   }
                 }
-
                 if ((val === 0 || val === totalBoardWidth - 1) && (newRow === 0 || newRow === totalBoardHeight - 1)) {
                   newRow = Math.min(Math.max(1, newRow), totalBoardHeight - 2);
                 }
-
                 setExitRow(newRow);
                 setSelectedEdgeGrid({ row: newRow, col: val });
               }}
-              className="w-16 p-2 border border-gray-300 rounded"
+              className="w-12 p-1 border border-gray-300 rounded text-sm"
             />
           </div>
-        </div>
-        <div className="flex items-center justify-center text-center">Max row and col for exit = {totalBoardHeight - 1}</div>
-      </div>
 
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-2 text-center">Create Cars</h2>
-        <div className="flex flex-wrap gap-4 justify-center">
+          <button
+            onClick={() => {
+              setCars([]);
+              setSelectedEdgeGrid(null);
+            }}
+            className="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 border-b pb-3">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium">Car:</label>
           <div className="flex items-center">
-            <label className="mr-2 font-medium">Length:</label>
+            <label className="mr-1 text-sm">Len</label>
             <input
-              id="length"
               type="number"
               min="2"
               value={inputCarLength}
               onChange={(e) => setInputCarLength(Math.max(2, Math.min(10, parseInt(e.target.value) || 2)))}
-              className="w-16 p-2 border border-gray-300 rounded"
+              className="w-12 p-1 border border-gray-300 rounded text-sm"
             />
           </div>
 
-          <div className="flex items-center">
-            <label className="mr-2 font-medium">Orientation:</label>
-            <button
-              className="border border-gray-300 cursor-pointer p-2 rounded-lg"
-              onClick={() => {
-                setInputCarOrientation(!inputCarOrientation);
-              }}
-            >
-              {inputCarOrientation ? "Vertical" : "Horizontal"}
-            </button>
-          </div>
+          <button className="px-2 py-1 border border-gray-300 rounded text-sm" onClick={() => setInputCarOrientation(!inputCarOrientation)}>
+            {inputCarOrientation ? "Vert" : "Horiz"}
+          </button>
 
           <div className="flex items-center">
-            <label className="mr-2 font-medium">Primary Car:</label>
-            <button
-              className={`border border-gray-300 cursor-pointer p-2 rounded-lg ${primaryCar && !isPrimary ? "opacity-50" : ""}`}
-              onClick={() => {
+            <label className="mr-1 text-sm">Primary</label>
+            <input
+              type="checkbox"
+              checked={isPrimary}
+              onChange={() => {
                 if (!primaryCar || isPrimary) {
                   setIsPrimary(!isPrimary);
                 }
               }}
               disabled={primaryCar && !isPrimary}
-            >
-              {isPrimary ? "True" : "False"}
-            </button>
+              className="w-4 h-4"
+            />
           </div>
-          <button onClick={() => addCar(inputCarLength, inputCarOrientation, isPrimary)} className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">
-            Add Car
-          </button>
         </div>
+
+        <button onClick={() => addCar(inputCarLength, inputCarOrientation, isPrimary)} className="px-3 py-1 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600">
+          Add Car
+        </button>
       </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium">Solver:</label>
+          <select value={selectedAlgorithm} onChange={(e) => setSelectedAlgorithm(e.target.value)} className="p-1 border border-gray-300 rounded text-sm" disabled={isSolving}>
+            <option value="aStar">A*</option>
+            <option value="gbfs">Greedy</option>
+            <option value="fringe">Fringe</option>
+            <option value="ucs">UCS</option>
+          </select>
 
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-2 text-center">Solve Board</h2>
-        <div className="flex flex-wrap gap-4 justify-center mb-4">
-          <div>
-            <label className="mr-2 font-medium">Algorithm:</label>
-            <select value={selectedAlgorithm} onChange={(e) => setSelectedAlgorithm(e.target.value)} className="p-2 border border-gray-300 rounded" disabled={isSolving}>
-              <option value="aStar">A* Search</option>
-              <option value="gbfs">Greedy Best-First Search</option>
-              <option value="fringe">Fringe Search</option>
-              <option value="ucs">Uniform Cost Search</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="mr-2 font-medium">Heuristic:</label>
-            <select value={selectedHeuristic} onChange={(e) => setSelectedHeuristic(e.target.value)} className="p-2 border border-gray-300 rounded" disabled={isSolving || selectedAlgorithm === "ucs"}>
-              <option value="combined">Combined Heuristic</option>
-              <option value="distance">Distance to Exit</option>
-              <option value="blocking">Blocking Cars</option>
-              <option value="recursive">Recursive Blockers</option>
-              <option value="moveNeeded">Move Needed Estimate</option>
-            </select>
-          </div>
+          <select
+            value={selectedHeuristic}
+            onChange={(e) => setSelectedHeuristic(e.target.value)}
+            className="p-1 border border-gray-300 rounded text-sm"
+            disabled={isSolving || selectedAlgorithm === "ucs"}
+          >
+            <option value="combined">Combined</option>
+            <option value="distance">Distance</option>
+            <option value="blocking">Blocking</option>
+            <option value="recursive">Recursive</option>
+            <option value="moveNeeded">Move Est.</option>
+          </select>
         </div>
 
-        <div className="flex justify-center">
-          <button onClick={solveBoard} disabled={isSolving} className={`px-4 py-2 ${isSolving ? "bg-gray-400" : "bg-green-500 hover:bg-green-600"} text-white rounded`}>
-            {isSolving ? "Solving..." : "Solve Board"}
-          </button>
-        </div>
+        <button onClick={solveBoard} disabled={isSolving} className={`px-3 py-1 ${isSolving ? "bg-gray-400" : "bg-green-500 hover:bg-green-600"} text-white rounded text-sm`}>
+          {isSolving ? "Solving..." : "Solve"}
+        </button>
+      </div>
+      {showSolution && solutionMoves.length > 0 && (
+        <div className="mt-3 pt-3 border-t">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Solution: {solutionMoves.length} moves</span>
 
-        {showSolution && solutionMoves.length > 0 && (
-          <div className="mt-4">
-            <h3 className="text-center font-semibold">Solution: {solutionMoves.length} moves</h3>
-            <div className="flex justify-center items-center gap-2 mt-2">
-              <button onClick={() => setSolutionStep(Math.max(0, solutionStep - 1))} disabled={solutionStep === 0} className="px-3 py-1 bg-blue-500 text-white rounded disabled:bg-gray-300">
-                Previous
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  if (isAutoPlaying && stopAutoPlay) {
+                    stopAutoPlay();
+                  }
+                  setSolutionStep(Math.max(0, solutionStep - 1));
+                }}
+                disabled={solutionStep === 0 || isAnimatingStep}
+                className="px-2 py-1 bg-blue-500 text-white rounded text-xs disabled:bg-gray-300"
+              >
+                ←
               </button>
-              <span className="font-medium">
+              <span className="text-xs">
                 Step {solutionStep + 1}/{solutionMoves.length}
               </span>
               <button
-                onClick={() => setSolutionStep(Math.min(solutionMoves.length - 1, solutionStep + 1))}
-                disabled={solutionStep === solutionMoves.length - 1}
-                className="px-3 py-1 bg-blue-500 text-white rounded disabled:bg-gray-300"
+                onClick={() => {
+                  if (isAutoPlaying && stopAutoPlay) {
+                    stopAutoPlay();
+                  }
+                  if (setIsAnimatingStep) {
+                    setIsAnimatingStep(true);
+                    setTimeout(() => {
+                      setSolutionStep(Math.min(solutionMoves.length - 1, solutionStep + 1));
+                      if (setIsAnimatingStep) setIsAnimatingStep(false);
+                    }, 350);
+                  } else {
+                    setSolutionStep(Math.min(solutionMoves.length - 1, solutionStep + 1));
+                  }
+                }}
+                disabled={solutionStep === solutionMoves.length - 1 || isAnimatingStep}
+                className="px-2 py-1 bg-blue-500 text-white rounded text-xs disabled:bg-gray-300"
               >
-                Next
+                →
               </button>
             </div>
-            <div className="mt-2 text-center">
-              <p>
-                Move: {solutionMoves[solutionStep].piece.id} {solutionMoves[solutionStep].direction}
-                by {solutionMoves[solutionStep].steps} {solutionMoves[solutionStep].steps === 1 ? "step" : "steps"}
-              </p>
-            </div>
           </div>
-        )}
-      </div>
+
+          <div className="mt-1 text-center text-sm">
+            <p>
+              {solutionMoves[solutionStep].piece.id} {solutionMoves[solutionStep].direction} {solutionMoves[solutionStep].steps} {solutionMoves[solutionStep].steps === 1 ? "step" : "steps"}
+            </p>
+          </div>
+
+          <div className="mt-3 flex justify-center gap-2">
+            {!isAutoPlaying ? (
+              <button
+                onClick={() => {
+                  if (startAutoPlay) {
+                    startAutoPlay();
+                  }
+                }}
+                disabled={solutionStep === solutionMoves.length - 1 || isAnimatingStep}
+                className="px-3 py-1 bg-green-500 text-white rounded text-xs disabled:bg-gray-300 hover:bg-green-600"
+              >
+                Auto Play
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  if (stopAutoPlay) {
+                    stopAutoPlay();
+                  }
+                }}
+                className="px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600"
+              >
+                Stop
+              </button>
+            )}{" "}
+            <button
+              onClick={() => {
+                if (originalBoardState.length > 0) {
+                  setCars([...originalBoardState]);
+                }
+                setSolutionStep(0);
+              }}
+              disabled={isAnimatingStep}
+              className="px-3 py-1 bg-gray-500 text-white rounded text-xs disabled:bg-gray-300 hover:bg-gray-600"
+            >
+              Reset Board
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-
-// Need to import necessary functions from validateInput
-import { parseFileContents } from "../lib/helpers/validateInput";
-// Need to import algorithm and heuristic functions
-import { aStar } from "../lib/algo/aStar";
-import { gbfs } from "../lib/algo/gbfs";
-import { fringeSearch } from "../lib/algo/fringeSearch";
-import { ucs } from "../lib/algo/ucs";
-import { distanceToExit } from "../lib/heuristics/distanceToExit";
-import { blockingCars } from "../lib/heuristics/blockingCars";
-import { recursiveBlockers } from "../lib/heuristics/recursiveBlockers";
-import { combinedHeuristic } from "../lib/heuristics/combinedHeuristic";
-import { moveNeededEstimate } from "../lib/heuristics/moveNeededEstimate";
 
 export default ControlPanel;

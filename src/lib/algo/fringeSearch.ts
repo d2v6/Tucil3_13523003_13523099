@@ -5,7 +5,10 @@ export const fringeSearch = (
     board: Board,
     pieces: PieceMap,
     heuristicFunction: (board: Board, pieces: PieceMap) => number
-): { found: boolean, moveHistory: Move[] } => {
+): { found: boolean, moveHistory: Move[], nodesVisited: number, timeTaken: number } => {
+    const startTime = performance.now();
+    let nodesVisited = 0;
+    
     const startH = heuristicFunction(board, pieces);
     const initialNode: Node = {
         board,
@@ -25,6 +28,8 @@ export const fringeSearch = (
         let minF = Infinity;
 
         for (const current of fringe) {
+            nodesVisited++;
+            
             const boardKey = collapseBoard(current.board);
             if (visited.has(boardKey) && visited.get(boardKey)! <= current.g!) {
                 continue;
@@ -33,7 +38,13 @@ export const fringeSearch = (
             visited.set(boardKey, current.g!);
 
             if (isSolutionFound(current.pieces)) {
-                return { found: true, moveHistory: current.moveHistory };
+                const timeTaken = performance.now() - startTime;
+                return { 
+                    found: true, 
+                    moveHistory: current.moveHistory,
+                    nodesVisited,
+                    timeTaken
+                };
             }
 
             const validMoves = getAllValidMoves(current.board, current.pieces);
@@ -73,5 +84,11 @@ export const fringeSearch = (
         fringe = nextFringe;
     }
 
-    return { found: false, moveHistory: [] };
+    const timeTaken = performance.now() - startTime;
+    return { 
+        found: false, 
+        moveHistory: [],
+        nodesVisited,
+        timeTaken
+    };
 };

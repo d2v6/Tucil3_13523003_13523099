@@ -10,7 +10,6 @@ function App() {
   const [gridSize, setgridSize] = useState<number>(80);
   const [cars, setCars] = useState<Car[]>([]);
   const [selectedEdgeGrid, setSelectedEdgeGrid] = useState<EdgeGrid | null>(null);
-  const boardRef = useRef<HTMLDivElement>(null);
   const [inputCarLength, setInputCarLength] = useState<number>(2);
   const [inputCarOrientation, setInputCarOrientation] = useState<boolean>(false);
   const [isPrimary, setIsPrimary] = useState<boolean>(false);
@@ -23,17 +22,74 @@ function App() {
   const [isSolving, setIsSolving] = useState<boolean>(false);
   const [solutionStep, setSolutionStep] = useState<number>(0);
   const [showSolution, setShowSolution] = useState<boolean>(false);
+  const [isAnimatingStep, setIsAnimatingStep] = useState<boolean>(false);
+  const [autoPlayInterval, setAutoPlayInterval] = useState<number | null>(null);
+  const [isAutoPlaying, setIsAutoPlaying] = useState<boolean>(false);
+  const [originalBoardState, setOriginalBoardState] = useState<Car[]>([]);
 
+  const boardRef = useRef<HTMLDivElement>(null);
   const totalBoardWidth = boardWidth + 2;
   const totalBoardHeight = boardHeight + 2;
 
   useEffect(() => {
+    if (showSolution && solutionMoves.length > 0) {
+      setIsAnimatingStep(true);
+    }
+  }, [solutionStep, showSolution, solutionMoves.length]);
+
+  const startAutoPlay = () => {
+    if (isAutoPlaying) return;
+
+    setIsAutoPlaying(true);
+    const interval = setInterval(() => {
+      setSolutionStep((prevStep) => {
+        if (prevStep < solutionMoves.length - 1) {
+          setIsAnimatingStep(true);
+          setTimeout(() => setIsAnimatingStep(false), 350);
+          return prevStep + 1;
+        } else {
+          stopAutoPlay();
+          return prevStep;
+        }
+      });
+    }, 1000);
+
+    setAutoPlayInterval(interval);
+  };
+
+  const stopAutoPlay = () => {
+    if (autoPlayInterval) {
+      clearInterval(autoPlayInterval);
+      setAutoPlayInterval(null);
+    }
+    setIsAutoPlaying(false);
+  };
+
+  useEffect(() => {
+    if (isAnimatingStep) {
+      const timer = setTimeout(() => {
+        setIsAnimatingStep(false);
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [isAnimatingStep]);
+
+  useEffect(() => {
+    return () => {
+      if (autoPlayInterval) {
+        clearInterval(autoPlayInterval);
+      }
+    };
+  }, [autoPlayInterval]);
+
+  useEffect(() => {
     const maxGridSize = 80;
-    const minGridSize = 32;
-    const maxBoard = 10;
+    const minGridSize = 20;
     const largest = Math.max(boardWidth, boardHeight);
-    const newGridSize = Math.round(maxGridSize - ((maxGridSize - minGridSize) * (largest - 3)) / (maxBoard - 3));
-    setgridSize(newGridSize);
+
+    const newGridSize = Math.round(maxGridSize - ((maxGridSize - minGridSize) * (largest - 3)) / 9);
+
+    setgridSize(Math.max(minGridSize, Math.min(maxGridSize, newGridSize)));
   }, [boardWidth, boardHeight]);
 
   const isEdgeGrid = (row: number, col: number) => {
@@ -79,7 +135,7 @@ function App() {
         grid.push(
           <div
             key={`${row}-${col}`}
-            className="border border-gray-300  rounded-lg"
+            className="border border-gray-300"
             style={{
               width: gridSize,
               height: gridSize,
@@ -217,6 +273,13 @@ function App() {
           setShowSolution={setShowSolution}
           convertCarsToBoard={convertCarsToBoard}
           getRandomCharacter={getRandomCharacter}
+          isAnimatingStep={isAnimatingStep}
+          setIsAnimatingStep={setIsAnimatingStep}
+          isAutoPlaying={isAutoPlaying}
+          startAutoPlay={startAutoPlay}
+          stopAutoPlay={stopAutoPlay}
+          originalBoardState={originalBoardState}
+          setOriginalBoardState={setOriginalBoardState}
         />
         <div className="flex flex-col items-center justify-center">
           <h2 className="font-bold text-3xl">Rules</h2>
@@ -264,6 +327,9 @@ function App() {
           inputGridSize={gridSize}
           deleteCarById={deleteCarById}
           isPrimary={car.isPrimary}
+          isExecutingMove={isAnimatingStep && showSolution && solutionMoves.length > 0 && solutionMoves[solutionStep]?.piece.id === car.id}
+          moveDirection={isAnimatingStep && showSolution && solutionMoves.length > 0 && solutionMoves[solutionStep]?.piece.id === car.id ? solutionMoves[solutionStep].direction : undefined}
+          moveSteps={isAnimatingStep && showSolution && solutionMoves.length > 0 && solutionMoves[solutionStep]?.piece.id === car.id ? solutionMoves[solutionStep].steps : undefined}
         />
       ))}
     </main>
