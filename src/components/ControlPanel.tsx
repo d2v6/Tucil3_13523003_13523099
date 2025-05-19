@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Car, EdgeGrid, PieceMap, Board, Move } from "../lib/types";
 import { parseFileContents } from "../lib/helpers/validateInput";
 import { aStar } from "../lib/algo/aStar";
@@ -22,30 +23,11 @@ interface ControlPanelProps {
   setSelectedEdgeGrid: (grid: EdgeGrid | null) => void;
   totalBoardWidth: number;
   totalBoardHeight: number;
-  inputCarLength: number;
-  setInputCarLength: (length: number) => void;
-  inputCarOrientation: boolean;
-  setInputCarOrientation: (isVertical: boolean) => void;
-  isPrimary: boolean;
-  setIsPrimary: (isPrimary: boolean) => void;
-  exitRow: number;
-  setExitRow: (row: number) => void;
-  exitCol: number;
-  setExitCol: (col: number) => void;
-  selectedAlgorithm: string;
-  setSelectedAlgorithm: (algorithm: string) => void;
-  selectedHeuristic: string;
-  setSelectedHeuristic: (heuristic: string) => void;
   solutionMoves: Move[];
   setSolutionMoves: (moves: Move[]) => void;
-  isSolving: boolean;
-  setIsSolving: (isSolving: boolean) => void;
   solutionStep: number;
   setSolutionStep: (step: number) => void;
-  showSolution: boolean;
-  setShowSolution: (show: boolean) => void;
   convertCarsToBoard: () => { board: Board; pieces: PieceMap; overlaps: boolean };
-  getRandomCharacter: () => string | undefined;
   isAnimatingStep?: boolean;
   setIsAnimatingStep?: (isAnimating: boolean) => void;
   isAutoPlaying?: boolean;
@@ -66,39 +48,32 @@ const ControlPanel = ({
   setSelectedEdgeGrid,
   totalBoardWidth,
   totalBoardHeight,
-  inputCarLength,
-  setInputCarLength,
-  inputCarOrientation,
-  setInputCarOrientation,
-  isPrimary,
-  setIsPrimary,
-  exitRow,
-  setExitRow,
-  exitCol,
-  setExitCol,
-  selectedAlgorithm,
-  setSelectedAlgorithm,
-  selectedHeuristic,
-  setSelectedHeuristic,
   solutionMoves,
   setSolutionMoves,
-  isSolving,
-  setIsSolving,
   solutionStep,
   setSolutionStep,
-  showSolution,
-  setShowSolution,
   convertCarsToBoard,
-  getRandomCharacter,
   isAnimatingStep,
-  setIsAnimatingStep,
   isAutoPlaying,
   startAutoPlay,
   stopAutoPlay,
   originalBoardState,
   setOriginalBoardState,
 }: ControlPanelProps) => {
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState<string>("aStar");
+  const [selectedHeuristic, setSelectedHeuristic] = useState<string>("combined");
+  const [showSolution, setShowSolution] = useState<boolean>(false);
+  const [inputCarLength, setInputCarLength] = useState<number>(2);
+  const [inputCarOrientation, setInputCarOrientation] = useState<boolean>(false);
+  const [isPrimary, setIsPrimary] = useState<boolean>(false);
+  const [exitRow, setExitRow] = useState<number>(0);
+  const [exitCol, setExitCol] = useState<number>(0);
+  const [isSolving, setIsSolving] = useState<boolean>(false);
+  const [nodesFound, setNodesFound] = useState<number>(0);
+  const [timeTaken, setTimeTaken] = useState<number>(0);
+
   const primaryCar = cars.find((car) => car.isPrimary);
+  const isInitialState = solutionStep === -1;
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -125,6 +100,18 @@ const ControlPanel = ({
       if (result.newCars) setCars(result.newCars);
     };
     reader.readAsText(file);
+  };
+
+  const getRandomCharacter = () => {
+    const excludedChars = ["K", "P", ".", " "];
+    const usedChars = cars.map((car) => car.id);
+
+    for (let charCode = 65; charCode <= 90; charCode++) {
+      const letter = String.fromCharCode(charCode);
+      if (!excludedChars.includes(letter) && !usedChars.includes(letter)) {
+        return letter;
+      }
+    }
   };
 
   const addCar = (size: number, isVertical: boolean, isPrimary: boolean) => {
@@ -174,7 +161,7 @@ const ControlPanel = ({
 
     setIsSolving(true);
     setSolutionMoves([]);
-    setSolutionStep(0);
+    setSolutionStep(-1);
 
     let heuristicFunction;
     switch (selectedHeuristic) {
@@ -211,6 +198,8 @@ const ControlPanel = ({
       }
 
       if (result && result.found) {
+        setNodesFound(result.nodesVisited);
+        setTimeTaken(result.timeTaken);
         setSolutionMoves(result.moveHistory);
         setShowSolution(true);
         alert(`Solution found in ${result.moveHistory.length} moves!`);
@@ -299,6 +288,7 @@ const ControlPanel = ({
             onClick={() => {
               setCars([]);
               setSelectedEdgeGrid(null);
+              setShowSolution(false);
             }}
             className="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
           >
@@ -376,6 +366,8 @@ const ControlPanel = ({
         <div className="mt-3 pt-3 border-t">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Solution: {solutionMoves.length} moves</span>
+            <span className="text-sm font-medium">Nodes: {nodesFound}</span>
+            <span className="text-sm font-medium">Time: {timeTaken.toPrecision(3)}ms</span>
 
             <div className="flex items-center gap-1">
               <button
@@ -383,9 +375,12 @@ const ControlPanel = ({
                   if (isAutoPlaying && stopAutoPlay) {
                     stopAutoPlay();
                   }
-                  setSolutionStep(Math.max(0, solutionStep - 1));
+                  setSolutionStep(Math.max(-1, solutionStep - 1));
+
+                  if (solutionStep === 0 && originalBoardState.length > 0) {
+                    setCars([...originalBoardState]);
+                  }
                 }}
-                disabled={solutionStep === 0 || isAnimatingStep}
                 className="px-2 py-1 bg-blue-500 text-white rounded text-xs disabled:bg-gray-300"
               >
                 ←
@@ -398,28 +393,14 @@ const ControlPanel = ({
                   if (isAutoPlaying && stopAutoPlay) {
                     stopAutoPlay();
                   }
-                  if (setIsAnimatingStep) {
-                    setIsAnimatingStep(true);
-                    setTimeout(() => {
-                      setSolutionStep(Math.min(solutionMoves.length - 1, solutionStep + 1));
-                      if (setIsAnimatingStep) setIsAnimatingStep(false);
-                    }, 350);
-                  } else {
-                    setSolutionStep(Math.min(solutionMoves.length - 1, solutionStep + 1));
-                  }
+                  setSolutionStep(Math.min(solutionMoves.length, solutionStep + 1));
                 }}
-                disabled={solutionStep === solutionMoves.length - 1 || isAnimatingStep}
+                disabled={solutionStep === solutionMoves.length - 1}
                 className="px-2 py-1 bg-blue-500 text-white rounded text-xs disabled:bg-gray-300"
               >
                 →
               </button>
             </div>
-          </div>
-
-          <div className="mt-1 text-center text-sm">
-            <p>
-              {solutionMoves[solutionStep].piece.id} {solutionMoves[solutionStep].direction} {solutionMoves[solutionStep].steps} {solutionMoves[solutionStep].steps === 1 ? "step" : "steps"}
-            </p>
           </div>
 
           <div className="mt-3 flex justify-center gap-2">
@@ -430,7 +411,7 @@ const ControlPanel = ({
                     startAutoPlay();
                   }
                 }}
-                disabled={solutionStep === solutionMoves.length - 1 || isAnimatingStep}
+                disabled={solutionStep === solutionMoves.length || isAnimatingStep}
                 className="px-3 py-1 bg-green-500 text-white rounded text-xs disabled:bg-gray-300 hover:bg-green-600"
               >
                 Auto Play
@@ -446,15 +427,15 @@ const ControlPanel = ({
               >
                 Stop
               </button>
-            )}{" "}
+            )}
             <button
               onClick={() => {
                 if (originalBoardState.length > 0) {
                   setCars([...originalBoardState]);
                 }
-                setSolutionStep(0);
+                setSolutionStep(-1);
               }}
-              disabled={isAnimatingStep}
+              disabled={isAnimatingStep || isInitialState}
               className="px-3 py-1 bg-gray-500 text-white rounded text-xs disabled:bg-gray-300 hover:bg-gray-600"
             >
               Reset Board

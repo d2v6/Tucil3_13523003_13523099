@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { Direction } from "../lib/types";
 
 interface DraggableCarProps {
@@ -46,6 +46,7 @@ const DraggableCar = ({
   const [parentBounds, setParentBounds] = useState({ top: 0, left: 0 });
   const [zIndex, setZIndex] = useState(1);
   const [isAnimating, setIsAnimating] = useState(false);
+  const animationTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (parentRef.current) {
@@ -156,7 +157,19 @@ const DraggableCar = ({
   }, [dragging, handleMouseMove, handleMouseUp]);
 
   useEffect(() => {
-    if (isExecutingMove && moveDirection && moveSteps && moveSteps > 0) {
+    return () => {
+      if (animationTimerRef.current !== null) {
+        clearTimeout(animationTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isExecutingMove && moveDirection && moveSteps && moveSteps > 0 && !isAnimating) {
+      if (animationTimerRef.current !== null) {
+        clearTimeout(animationTimerRef.current);
+      }
+
       setIsAnimating(true);
       setZIndex(5);
 
@@ -181,33 +194,33 @@ const DraggableCar = ({
       newTop = Math.max(parentBounds.top + minTop, Math.min(parentBounds.top + maxTop, newTop));
       newLeft = Math.max(parentBounds.left + minLeft, Math.min(parentBounds.left + maxLeft, newLeft));
 
-      setTimeout(() => {
+      setPosition({
+        top: newTop,
+        left: newLeft,
+      });
+
+      animationTimerRef.current = window.setTimeout(() => {
+        const snappedTop = snapToGrid(newTop, minTop, maxTop, false);
+        const snappedLeft = snapToGrid(newLeft, minLeft, maxLeft, true);
+
         setPosition({
-          top: newTop,
-          left: newLeft,
+          top: snappedTop,
+          left: snappedLeft,
         });
 
-        setTimeout(() => {
-          const snappedTop = snapToGrid(newTop, minTop, maxTop, false);
-          const snappedLeft = snapToGrid(newLeft, minLeft, maxLeft, true);
+        const relativeTop = Math.round((snappedTop - parentBounds.top - minTop) / inputGridSize) - 1;
+        const relativeLeft = Math.round((snappedLeft - parentBounds.left - minLeft) / inputGridSize) - 1;
 
-          setPosition({
-            top: snappedTop,
-            left: snappedLeft,
-          });
+        if (onPositionChange) {
+          onPositionChange(id, relativeTop, relativeLeft);
+        }
 
-          const relativeTop = Math.round((snappedTop - parentBounds.top - minTop) / inputGridSize) - 1;
-          const relativeLeft = Math.round((snappedLeft - parentBounds.left - minLeft) / inputGridSize) - 1;
-
-          if (onPositionChange) {
-            onPositionChange(id, relativeTop, relativeLeft);
-            setIsAnimating(false);
-            setZIndex(1);
-          }
-        }, 300);
-      }, 50);
+        setIsAnimating(false);
+        setZIndex(1);
+        animationTimerRef.current = null;
+      }, 300);
     }
-  }, [isExecutingMove, moveDirection, moveSteps, inputGridSize, position, parentBounds, minTop, maxTop, minLeft, maxLeft, onPositionChange, id, snapToGrid]);
+  }, [isExecutingMove, moveDirection, moveSteps, isAnimating, inputGridSize, position, parentBounds, minTop, maxTop, minLeft, maxLeft, onPositionChange, id, snapToGrid]);
 
   return (
     <div

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import DraggableCar from "./components/DraggableCar";
 import ControlPanel from "./components/ControlPanel";
 import { rules } from "./lib/constant/rules";
-import type { Car, EdgeGrid, Board, PieceMap, Move, Piece } from "./lib/types";
+import type { Car, EdgeGrid, Board, PieceMap, Move, Piece, Direction } from "./lib/types";
 
 function App() {
   const [boardWidth, setBoardWidth] = useState<number>(6);
@@ -10,20 +10,10 @@ function App() {
   const [gridSize, setgridSize] = useState<number>(80);
   const [cars, setCars] = useState<Car[]>([]);
   const [selectedEdgeGrid, setSelectedEdgeGrid] = useState<EdgeGrid | null>(null);
-  const [inputCarLength, setInputCarLength] = useState<number>(2);
-  const [inputCarOrientation, setInputCarOrientation] = useState<boolean>(false);
-  const [isPrimary, setIsPrimary] = useState<boolean>(false);
-  const [exitRow, setExitRow] = useState<number>(0);
-  const [exitCol, setExitCol] = useState<number>(0);
 
-  const [selectedAlgorithm, setSelectedAlgorithm] = useState<string>("aStar");
-  const [selectedHeuristic, setSelectedHeuristic] = useState<string>("combined");
   const [solutionMoves, setSolutionMoves] = useState<Move[]>([]);
-  const [isSolving, setIsSolving] = useState<boolean>(false);
-  const [solutionStep, setSolutionStep] = useState<number>(0);
-  const [showSolution, setShowSolution] = useState<boolean>(false);
+  const [currentSolutionStep, setCurrentSolutionStep] = useState<number>(0);
   const [isAnimatingStep, setIsAnimatingStep] = useState<boolean>(false);
-  const [autoPlayInterval, setAutoPlayInterval] = useState<number | null>(null);
   const [isAutoPlaying, setIsAutoPlaying] = useState<boolean>(false);
   const [originalBoardState, setOriginalBoardState] = useState<Car[]>([]);
 
@@ -31,56 +21,58 @@ function App() {
   const totalBoardWidth = boardWidth + 2;
   const totalBoardHeight = boardHeight + 2;
 
-  useEffect(() => {
-    if (showSolution && solutionMoves.length > 0) {
-      setIsAnimatingStep(true);
-    }
-  }, [solutionStep, showSolution, solutionMoves.length]);
+  const boardWidthPx = boardWidth * gridSize;
+  const boardHeightPx = boardHeight * gridSize;
+  const totalBoardWidthPx = totalBoardWidth * gridSize;
+  const totalBoardHeightPx = totalBoardHeight * gridSize;
+
+  const autoPlayIntervalRef = useRef<number | null>(null);
 
   const startAutoPlay = () => {
-    if (isAutoPlaying) return;
-
     setIsAutoPlaying(true);
-    const interval = setInterval(() => {
-      setSolutionStep((prevStep) => {
-        if (prevStep < solutionMoves.length - 1) {
+
+    if (autoPlayIntervalRef.current !== null) {
+      window.clearInterval(autoPlayIntervalRef.current);
+    }
+
+    autoPlayIntervalRef.current = window.setInterval(() => {
+      setCurrentSolutionStep((currentSolutionStep) => {
+        if (currentSolutionStep < solutionMoves.length - 1) {
           setIsAnimatingStep(true);
-          setTimeout(() => setIsAnimatingStep(false), 350);
-          return prevStep + 1;
+          return currentSolutionStep + 1;
         } else {
           stopAutoPlay();
-          return prevStep;
+          return currentSolutionStep;
         }
       });
-    }, 1000);
-
-    setAutoPlayInterval(interval);
+    }, 300);
   };
 
   const stopAutoPlay = () => {
-    if (autoPlayInterval) {
-      clearInterval(autoPlayInterval);
-      setAutoPlayInterval(null);
+    if (autoPlayIntervalRef.current !== null) {
+      window.clearInterval(autoPlayIntervalRef.current);
+      autoPlayIntervalRef.current = null;
     }
     setIsAutoPlaying(false);
   };
 
   useEffect(() => {
-    if (isAnimatingStep) {
-      const timer = setTimeout(() => {
-        setIsAnimatingStep(false);
-      }, 350);
-      return () => clearTimeout(timer);
-    }
-  }, [isAnimatingStep]);
-
-  useEffect(() => {
     return () => {
-      if (autoPlayInterval) {
-        clearInterval(autoPlayInterval);
+      if (autoPlayIntervalRef.current !== null) {
+        window.clearInterval(autoPlayIntervalRef.current);
       }
     };
-  }, [autoPlayInterval]);
+  }, []);
+
+  useEffect(() => {
+    setIsAnimatingStep(true);
+    const animationTimer = setTimeout(() => {
+      setIsAnimatingStep(false);
+    }, 1);
+    return () => {
+      clearTimeout(animationTimer);
+    };
+  }, [currentSolutionStep]);
 
   useEffect(() => {
     const maxGridSize = 80;
@@ -147,18 +139,6 @@ function App() {
       }
     }
     return grid;
-  };
-
-  const getRandomCharacter = () => {
-    const excludedChars = ["K", "P", ".", " "];
-    const usedChars = cars.map((car) => car.id);
-
-    for (let charCode = 65; charCode <= 90; charCode++) {
-      const letter = String.fromCharCode(charCode);
-      if (!excludedChars.includes(letter) && !usedChars.includes(letter)) {
-        return letter;
-      }
-    }
   };
 
   const updateCarPosition = (id: string, top: number, left: number) => {
@@ -228,14 +208,24 @@ function App() {
     };
   };
 
-  const boardWidthPx = boardWidth * gridSize;
-  const boardHeightPx = boardHeight * gridSize;
-  const totalBoardWidthPx = totalBoardWidth * gridSize;
-  const totalBoardHeightPx = totalBoardHeight * gridSize;
+  const getReverseDirection = (direction: Direction): Direction => {
+    switch (direction) {
+      case "Up":
+        return "Down";
+      case "Down":
+        return "Up";
+      case "Left":
+        return "Right";
+      case "Right":
+        return "Left";
+      default:
+        return direction;
+    }
+  };
 
   return (
     <main className="relative flex flex-row  items-center p-4 w-full min-h-screen bg-gray-100">
-      <div className="w-full flex flex-col items-center justify-center">
+      <div className="w-full flex flex-col items-center justify-center gap-10">
         <h1 className="text-3xl font-bold mb-6 text-center">Unblock Car Game</h1>
         <ControlPanel
           boardWidth={boardWidth}
@@ -249,30 +239,11 @@ function App() {
           setSelectedEdgeGrid={setSelectedEdgeGrid}
           totalBoardWidth={totalBoardWidth}
           totalBoardHeight={totalBoardHeight}
-          inputCarLength={inputCarLength}
-          setInputCarLength={setInputCarLength}
-          inputCarOrientation={inputCarOrientation}
-          setInputCarOrientation={setInputCarOrientation}
-          isPrimary={isPrimary}
-          setIsPrimary={setIsPrimary}
-          exitRow={exitRow}
-          setExitRow={setExitRow}
-          exitCol={exitCol}
-          setExitCol={setExitCol}
-          selectedAlgorithm={selectedAlgorithm}
-          setSelectedAlgorithm={setSelectedAlgorithm}
-          selectedHeuristic={selectedHeuristic}
-          setSelectedHeuristic={setSelectedHeuristic}
           solutionMoves={solutionMoves}
           setSolutionMoves={setSolutionMoves}
-          isSolving={isSolving}
-          setIsSolving={setIsSolving}
-          solutionStep={solutionStep}
-          setSolutionStep={setSolutionStep}
-          showSolution={showSolution}
-          setShowSolution={setShowSolution}
+          solutionStep={currentSolutionStep}
+          setSolutionStep={setCurrentSolutionStep}
           convertCarsToBoard={convertCarsToBoard}
-          getRandomCharacter={getRandomCharacter}
           isAnimatingStep={isAnimatingStep}
           setIsAnimatingStep={setIsAnimatingStep}
           isAutoPlaying={isAutoPlaying}
@@ -327,9 +298,9 @@ function App() {
           inputGridSize={gridSize}
           deleteCarById={deleteCarById}
           isPrimary={car.isPrimary}
-          isExecutingMove={isAnimatingStep && showSolution && solutionMoves.length > 0 && solutionMoves[solutionStep]?.piece.id === car.id}
-          moveDirection={isAnimatingStep && showSolution && solutionMoves.length > 0 && solutionMoves[solutionStep]?.piece.id === car.id ? solutionMoves[solutionStep].direction : undefined}
-          moveSteps={isAnimatingStep && showSolution && solutionMoves.length > 0 && solutionMoves[solutionStep]?.piece.id === car.id ? solutionMoves[solutionStep].steps : undefined}
+          isExecutingMove={isAnimatingStep && solutionMoves.length > 0 && solutionMoves[currentSolutionStep]?.piece.id === car.id}
+          moveDirection={isAnimatingStep && solutionMoves.length > 0 && solutionMoves[currentSolutionStep]?.piece.id === car.id ? solutionMoves[currentSolutionStep].direction : undefined}
+          moveSteps={isAnimatingStep && solutionMoves.length > 0 && solutionMoves[currentSolutionStep]?.piece.id === car.id ? solutionMoves[currentSolutionStep].steps : undefined}
         />
       ))}
     </main>
