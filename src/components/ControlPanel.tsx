@@ -188,6 +188,8 @@ const ControlPanel = ({
           break;
       }
 
+      console.log(result);
+
       if (result && result.found) {
         setSolutionMoves(result.moveHistory);
         setShowSolution(true);

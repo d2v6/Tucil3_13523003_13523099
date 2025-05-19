@@ -184,17 +184,13 @@ export const isSolutionFound = (pieces: PieceMap): boolean => {
 
     if (orientation === "Horizontal") {
         if (pos.row === exitRow) {
-            const leftEdge = pos.col;
-            const rightEdge = pos.col + size - 1;
-            if (exitCol >= rightEdge || exitCol <= leftEdge) {
+            if (exitCol === pos.col - 1 || exitCol === pos.col + size) {
                 return true;
             }
         }
     } else if (orientation === "Vertical") {
         if (pos.col === exitCol) {
-            const topEdge = pos.row;
-            const bottomEdge = pos.row + size - 1;
-            if (exitRow >= bottomEdge || exitRow <= topEdge) {
+            if (exitRow === pos.row - 1 || exitRow === pos.row + size) {
                 return true;
             }
         }
