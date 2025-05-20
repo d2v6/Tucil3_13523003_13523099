@@ -1,10 +1,11 @@
 # Penyelesaian Puzzle Rush Hour
 
-<div align="center">
-   ![Aplikasi Solver](./doc/UnblockCarGame.gif)
-  <h3>Penyelesai Puzzle menggunakan Algoritma Pencarian</h3>
-  <p>Tugas Kecil 3 IF2211 Strategi Algoritma</p>
-</div>
+<p align="center">
+  <img src="doc/UnblockCarGame.gif" alt="Aplikasi Solver" />
+</p>
+
+<h3 align="center">Penyelesai Puzzle menggunakan Algoritma Pencarian</h3>
+<p align="center">Tugas Kecil 3 IF2211 Strategi Algoritma</p>
 
 ## Deploy
 
