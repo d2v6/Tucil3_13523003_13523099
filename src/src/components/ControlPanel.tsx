@@ -304,7 +304,7 @@ const ControlPanel = ({
 
         <div className="flex items-center gap-2">
           <div className="flex items-center">
-            <label className="mr-1 text-sm">Exit:</label>
+            <label className="mr-1 text-sm">Exit Row:</label>
             <input
               type="number"
               min={0}
@@ -327,7 +327,7 @@ const ControlPanel = ({
               }}
               className="w-12 p-1 border border-gray-300 rounded text-sm"
             />
-            <span className="mx-1 text-sm">×</span>
+            <span className="mx-1 text-sm">Exit Col:</span>
             <input
               type="number"
               min={0}
