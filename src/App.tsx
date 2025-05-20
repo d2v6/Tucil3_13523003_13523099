@@ -18,6 +18,8 @@ function App() {
   const [isReverse, setIsReverse] = useState<boolean>(false);
   const [originalBoardState, setOriginalBoardState] = useState<Car[]>([]);
 
+  const [isDisplayable, setIsDisplayble] = useState<boolean>(true);
+
   const boardRef = useRef<HTMLDivElement>(null);
   const totalBoardWidth = boardWidth + 2;
   const totalBoardHeight = boardHeight + 2;
@@ -46,7 +48,7 @@ function App() {
           return currentSolutionStep;
         }
       });
-    }, 300);
+    }, 350);
   };
 
   const stopAutoPlay = () => {
@@ -253,6 +255,7 @@ function App() {
           originalBoardState={originalBoardState}
           setOriginalBoardState={setOriginalBoardState}
           setIsReverse={setIsReverse}
+          setIsDisplayable={setIsDisplayble}
         />
         <div className="flex flex-col items-center justify-center">
           <h2 className="font-bold text-3xl">Rules</h2>
@@ -265,70 +268,73 @@ function App() {
           </div>
         </div>
       </div>
+      {isDisplayable && (
+        <>
+          <div className="mb-8 relative w-full flex items-center justify-center">
+            <div
+              ref={boardRef}
+              className="grid bg-white"
+              style={{
+                gridTemplateColumns: `repeat(${totalBoardWidth}, ${gridSize}px)`,
+                gridTemplateRows: `repeat(${totalBoardHeight}, ${gridSize}px)`,
+                width: totalBoardWidthPx,
+                height: totalBoardHeightPx,
+                position: "relative",
+              }}
+            >
+              {renderGrid()}
+              <ExitMarker position={selectedEdgeGrid} gridSize={gridSize} />
+            </div>
+          </div>
 
-      <div className="mb-8 relative w-full flex items-center justify-center">
-        <div
-          ref={boardRef}
-          className="grid bg-white"
-          style={{
-            gridTemplateColumns: `repeat(${totalBoardWidth}, ${gridSize}px)`,
-            gridTemplateRows: `repeat(${totalBoardHeight}, ${gridSize}px)`,
-            width: totalBoardWidthPx,
-            height: totalBoardHeightPx,
-            position: "relative",
-          }}
-        >
-          {renderGrid()}
-          <ExitMarker position={selectedEdgeGrid} gridSize={gridSize} />
-        </div>
-      </div>
-
-      {cars.map((car) => (
-        <DraggableCar
-          key={car.id}
-          id={car.id}
-          width={car.isVertical ? gridSize : car.size * gridSize}
-          height={car.isVertical ? car.size * gridSize : gridSize}
-          minTop={0}
-          maxTop={boardHeightPx - (car.isVertical ? car.size : 1) * gridSize + 1.75 * gridSize}
-          minLeft={0}
-          maxLeft={boardWidthPx - (car.isVertical ? 1 : car.size) * gridSize + 1.75 * gridSize}
-          initialTop={(car.initialTop + 1) * gridSize}
-          initialLeft={(car.initialLeft + 1) * gridSize}
-          parentRef={boardRef}
-          onPositionChange={updateCarPosition}
-          inputGridSize={gridSize}
-          deleteCarById={deleteCarById}
-          isPrimary={car.isPrimary}
-          isExecutingMove={
-            isAnimatingStep &&
-            solutionMoves.length > 0 &&
-            (isReverse ? currentSolutionStep < solutionMoves.length - 1 && solutionMoves[currentSolutionStep + 1]?.piece.id === car.id : solutionMoves[currentSolutionStep]?.piece.id === car.id)
-          }
-          moveDirection={
-            isAnimatingStep && solutionMoves.length > 0
-              ? isReverse
-                ? currentSolutionStep < solutionMoves.length - 1 && solutionMoves[currentSolutionStep + 1]?.piece.id === car.id
-                  ? getReverseDirection(solutionMoves[currentSolutionStep + 1].direction)
+          {cars.map((car) => (
+            <DraggableCar
+              key={car.id}
+              id={car.id}
+              width={car.isVertical ? gridSize : car.size * gridSize}
+              height={car.isVertical ? car.size * gridSize : gridSize}
+              minTop={0}
+              maxTop={boardHeightPx - (car.isVertical ? car.size : 1) * gridSize + 1.75 * gridSize}
+              minLeft={0}
+              maxLeft={boardWidthPx - (car.isVertical ? 1 : car.size) * gridSize + 1.75 * gridSize}
+              initialTop={(car.initialTop + 1) * gridSize}
+              initialLeft={(car.initialLeft + 1) * gridSize}
+              parentRef={boardRef}
+              onPositionChange={updateCarPosition}
+              inputGridSize={gridSize}
+              deleteCarById={deleteCarById}
+              isPrimary={car.isPrimary}
+              isExecutingMove={
+                isAnimatingStep &&
+                solutionMoves.length > 0 &&
+                (isReverse ? currentSolutionStep < solutionMoves.length - 1 && solutionMoves[currentSolutionStep + 1]?.piece.id === car.id : solutionMoves[currentSolutionStep]?.piece.id === car.id)
+              }
+              moveDirection={
+                isAnimatingStep && solutionMoves.length > 0
+                  ? isReverse
+                    ? currentSolutionStep < solutionMoves.length - 1 && solutionMoves[currentSolutionStep + 1]?.piece.id === car.id
+                      ? getReverseDirection(solutionMoves[currentSolutionStep + 1].direction)
+                      : undefined
+                    : solutionMoves[currentSolutionStep]?.piece.id === car.id
+                    ? solutionMoves[currentSolutionStep].direction
+                    : undefined
                   : undefined
-                : solutionMoves[currentSolutionStep]?.piece.id === car.id
-                ? solutionMoves[currentSolutionStep].direction
-                : undefined
-              : undefined
-          }
-          moveSteps={
-            isAnimatingStep && solutionMoves.length > 0
-              ? isReverse
-                ? currentSolutionStep < solutionMoves.length - 1 && solutionMoves[currentSolutionStep + 1]?.piece.id === car.id
-                  ? solutionMoves[currentSolutionStep + 1].steps
+              }
+              moveSteps={
+                isAnimatingStep && solutionMoves.length > 0
+                  ? isReverse
+                    ? currentSolutionStep < solutionMoves.length - 1 && solutionMoves[currentSolutionStep + 1]?.piece.id === car.id
+                      ? solutionMoves[currentSolutionStep + 1].steps
+                      : undefined
+                    : solutionMoves[currentSolutionStep]?.piece.id === car.id
+                    ? solutionMoves[currentSolutionStep].steps
+                    : undefined
                   : undefined
-                : solutionMoves[currentSolutionStep]?.piece.id === car.id
-                ? solutionMoves[currentSolutionStep].steps
-                : undefined
-              : undefined
-          }
-        />
-      ))}
+              }
+            />
+          ))}
+        </>
+      )}
     </main>
   );
 }

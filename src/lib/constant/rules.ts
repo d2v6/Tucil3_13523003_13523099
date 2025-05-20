@@ -1,8 +1,7 @@
 export const rules = [
-  "Input cars through input.txt or drag cars into position manually",
-  "Draggable car feature disabled for boards with width or height above 10",
-  "Drag car outside of board to delete",
+  "Input cars through txt file or create and drag cars into position manually.",
+  "Drag cars outside of board to delete.",
   "Make sure cars dont overlap!",
-  "Click on a red grid to choose exit",
-  "Dont change window size",
+  "Dont change window size.",
+  "If board size too large(bigger than screen), only txt solution will be available!",
 ];

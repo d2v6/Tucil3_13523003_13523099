@@ -4,13 +4,28 @@ const boardToString = (board: Board): string => {
   return board.grid.map((row) => row.join("")).join("\n");
 };
 
+const translateDirection = (direction: string): string => {
+  switch (direction) {
+    case "Up":
+      return "atas";
+    case "Down":
+      return "bawah";
+    case "Left":
+      return "kiri";
+    case "Right":
+      return "kanan";
+    default:
+      return direction;
+  }
+};
+
 export const generateSolutionText = (initialBoard: Board, moveHistory: Move[], boardStates: Board[]): string => {
-  let output = "Starting Board\n";
+  let output = "Papan Awal\n";
   output += boardToString(initialBoard);
 
   moveHistory.forEach((move, index) => {
     const moveNumber = index + 1;
-    output += `Move ${moveNumber}: ${move.piece.id}-${move.direction} ${move.steps} step`;
+    output += `\nGerakan ${moveNumber}: ${move.piece.id}-${translateDirection(move.direction)} ${move.steps} step`;
 
     if (index + 1 < boardStates.length) {
       output += `\n${boardToString(boardStates[index + 1])}`;
@@ -40,8 +55,8 @@ export const downloadSolutionFile = (initialBoard: Board, moveHistory: Move[], b
 
 export const generateBoardStates = (initialBoard: Board, moveHistory: Move[], pieces: PieceMap): Board[] => {
   const states: Board[] = [initialBoard];
-  let currentBoard = initialBoard;
-  let currentPieces = pieces;
+  let currentBoard = structuredClone(initialBoard);
+  let currentPieces = structuredClone(pieces);
 
   for (const move of moveHistory) {
     const newBoard: Board = {

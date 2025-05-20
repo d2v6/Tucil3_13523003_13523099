@@ -10,6 +10,7 @@ import { blockingCars } from "../lib/heuristics/blockingCars";
 import { recursiveBlockers } from "../lib/heuristics/recursiveBlockers";
 import { combinedHeuristic } from "../lib/heuristics/combinedHeuristic";
 import { moveNeededEstimate } from "../lib/heuristics/moveNeededEstimate";
+import { downloadSolutionFile, generateBoardStates } from "../lib/helpers/output";
 
 interface ControlPanelProps {
   boardWidth: number;
@@ -36,6 +37,7 @@ interface ControlPanelProps {
   originalBoardState: Car[];
   setOriginalBoardState: (cars: Car[]) => void;
   setIsReverse: (bool: boolean) => void;
+  setIsDisplayable: (bool: boolean) => void;
 }
 
 const ControlPanel = ({
@@ -61,6 +63,7 @@ const ControlPanel = ({
   originalBoardState,
   setOriginalBoardState,
   setIsReverse,
+  setIsDisplayable,
 }: ControlPanelProps) => {
   const [selectedAlgorithm, setSelectedAlgorithm] = useState<string>("aStar");
   const [selectedHeuristic, setSelectedHeuristic] = useState<string>("combined");
@@ -80,6 +83,7 @@ const ControlPanel = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setIsDisplayable(true);
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -106,6 +110,7 @@ const ControlPanel = ({
 
       if (fileInputRef.current) fileInputRef.current.value = "";
     };
+    setShowSolution(false);
     reader.readAsText(file);
   };
 
@@ -162,6 +167,57 @@ const ControlPanel = ({
     if (overlaps) {
       alert("There are overlapping cars, fix the positioning!");
       return;
+    }
+
+    const primaryCar = cars.find((car) => car.isPrimary);
+
+    if (primaryCar) {
+      const exitPosition = {
+        row: selectedEdgeGrid.row - 1,
+        col: selectedEdgeGrid.col - 1,
+      };
+
+      if (!primaryCar.isVertical) {
+        if (primaryCar.initialTop !== exitPosition.row) {
+          alert("Error: Primary car must be in the same row as the exit when oriented horizontally.");
+          return;
+        }
+
+        const blockingCars = cars.filter(
+          (car) =>
+            !car.isPrimary &&
+            !car.isVertical &&
+            car.initialTop === exitPosition.row &&
+            ((exitPosition.col > primaryCar.initialLeft && car.initialLeft > primaryCar.initialLeft + primaryCar.size - 1 && car.initialLeft <= exitPosition.col) ||
+              (exitPosition.col < primaryCar.initialLeft && car.initialLeft + car.size - 1 >= exitPosition.col && car.initialLeft < primaryCar.initialLeft))
+        );
+
+        if (blockingCars.length > 0) {
+          alert(`Warning: There are ${blockingCars.length} horizontal cars blocking the direct path to the exit. The puzzle is unsolvable.`);
+          return;
+        }
+      }
+
+      if (primaryCar.isVertical) {
+        if (primaryCar.initialLeft !== exitPosition.col) {
+          alert("Error: Primary car must be in the same column as the exit when oriented vertically.");
+          return;
+        }
+
+        const blockingCars = cars.filter(
+          (car) =>
+            !car.isPrimary &&
+            car.isVertical &&
+            car.initialLeft === exitPosition.col &&
+            ((exitPosition.row > primaryCar.initialTop && car.initialTop > primaryCar.initialTop + primaryCar.size - 1 && car.initialTop <= exitPosition.row) ||
+              (exitPosition.row < primaryCar.initialTop && car.initialTop + car.size - 1 >= exitPosition.row && car.initialTop < primaryCar.initialTop))
+        );
+
+        if (blockingCars.length > 0) {
+          alert(`Warning: There are ${blockingCars.length} vertical cars blocking the direct path to the exit. The puzzle is unsolvable.`);
+          return;
+        }
+      }
     }
 
     setOriginalBoardState([...cars]);
@@ -374,7 +430,7 @@ const ControlPanel = ({
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Solution: {solutionMoves.length} moves</span>
             <span className="text-sm font-medium">Nodes: {nodesFound}</span>
-            <span className="text-sm font-medium">Time: {timeTaken.toPrecision(3)}ms</span>
+            <span className="text-sm font-medium">Time: {timeTaken.toFixed(3)}ms</span>
 
             <div className="flex items-center gap-1">
               <button
@@ -438,10 +494,15 @@ const ControlPanel = ({
             )}
             <button
               onClick={() => {
-                if (originalBoardState.length > 0) {
-                  setCars([...originalBoardState]);
+                if (isAutoPlaying && stopAutoPlay) {
+                  stopAutoPlay();
                 }
-                setSolutionStep(-1);
+                setTimeout(() => {
+                  if (originalBoardState.length > 0) {
+                    setCars([...originalBoardState]);
+                  }
+                  setSolutionStep(-1);
+                }, 500);
               }}
               disabled={isAnimatingStep || isInitialState}
               className="px-3 py-1 bg-gray-500 text-white rounded text-xs disabled:bg-gray-300 hover:bg-gray-600"
@@ -449,6 +510,16 @@ const ControlPanel = ({
               Reset Board
             </button>
           </div>
+          <button
+            onClick={() => {
+              const { board, pieces } = convertCarsToBoard();
+              downloadSolutionFile(board, solutionMoves, generateBoardStates(board, solutionMoves, pieces), `unblock_car_solution.txt`);
+            }}
+            disabled={solutionMoves.length === 0}
+            className="px-3 py-1 bg-purple-500 text-white rounded text-xs disabled:bg-gray-300 hover:bg-purple-600"
+          >
+            Download Solution
+          </button>
         </div>
       )}
     </div>
