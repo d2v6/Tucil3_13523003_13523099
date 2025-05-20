@@ -120,8 +120,6 @@ npm install
 # Menjalankan server pengembangan
 npm run dev
 
-Aplikasi dapat diakses di http://localhost:4000
-
 ### Mode Production
 
 ```bash
@@ -134,8 +132,6 @@ npx serve -s
 # Alternatif, jika serve diinstal secara global
 serve -s
 ````
-
-Build produksi dapat diakses di http://localhost:3000
 
 ## Panduan Penggunaan
 
