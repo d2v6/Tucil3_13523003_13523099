@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { Car, EdgeGrid, PieceMap, Board, Move } from "../lib/types";
 import { parseFileContents } from "../lib/helpers/validateInput";
 import { aStar } from "../lib/algo/aStar";
@@ -77,12 +77,15 @@ const ControlPanel = ({
   const primaryCar = cars.find((car) => car.isPrimary);
   const isInitialState = solutionStep === -1;
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     if (file.type !== "text/plain" && !file.name.endsWith(".txt")) {
       alert("Please upload a valid .txt file");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
@@ -100,6 +103,8 @@ const ControlPanel = ({
       if (result.height) setBoardHeight(result.height);
       if (result.exitGrid) setSelectedEdgeGrid(result.exitGrid);
       if (result.newCars) setCars(result.newCars);
+
+      if (fileInputRef.current) fileInputRef.current.value = "";
     };
     reader.readAsText(file);
   };
@@ -222,7 +227,7 @@ const ControlPanel = ({
         <div className="flex items-center gap-2">
           <label className="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
             Upload
-            <input type="file" accept=".txt,text/plain" onChange={handleFileUpload} className="hidden" />
+            <input ref={fileInputRef} type="file" accept=".txt,text/plain" onChange={handleFileUpload} className="hidden" />
           </label>
 
           <div className="flex items-center">
