@@ -110,7 +110,11 @@ const ControlPanel = ({
 
       if (result.width) setBoardWidth(result.width);
       if (result.height) setBoardHeight(result.height);
-      if (result.exitGrid) setSelectedEdgeGrid(result.exitGrid);
+      if (result.exitGrid) {
+        setSelectedEdgeGrid(result.exitGrid);
+        setExitRow(result.exitGrid.row);
+        setExitCol(result.exitGrid.col);
+      }
       if (result.newCars) setCars(result.newCars);
 
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -292,12 +296,12 @@ const ControlPanel = ({
           </label>
 
           <div className="flex items-center">
-            <label className="mr-1 text-sm">W:</label>
+            <label className="mr-1 text-sm">Board Width:</label>
             <input type="number" min="2" value={boardWidth} onChange={(e) => setBoardWidth(parseInt(e.target.value))} className="w-12 p-1 border border-gray-300 rounded text-sm" />
           </div>
 
           <div className="flex items-center">
-            <label className="mr-1 text-sm">H:</label>
+            <label className="mr-1 text-sm">Board Height:</label>
             <input type="number" min="2" value={boardHeight} onChange={(e) => setBoardHeight(parseInt(e.target.value))} className="w-12 p-1 border border-gray-300 rounded text-sm" />
           </div>
         </div>
@@ -368,7 +372,7 @@ const ControlPanel = ({
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium">Car:</label>
           <div className="flex items-center">
-            <label className="mr-1 text-sm">Len</label>
+            <label className="mr-1 text-sm">Size:</label>
             <input
               type="number"
               min="2"
@@ -378,8 +382,8 @@ const ControlPanel = ({
             />
           </div>
 
-          <button className="px-2 py-1 border border-gray-300 rounded text-sm" onClick={() => setInputCarOrientation(!inputCarOrientation)}>
-            {inputCarOrientation ? "Vert" : "Horiz"}
+          <button className="px-2 py-1 border border-gray-300 rounded text-sm hover:bg-gray-100 cursor-pointer" onClick={() => setInputCarOrientation(!inputCarOrientation)}>
+            {inputCarOrientation ? "Vertical" : "Horizontal"}
           </button>
 
           <div className="flex items-center">
