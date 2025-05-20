@@ -28,7 +28,23 @@ export const parseFileContents = (content: string) => {
     const width = parseInt(dimensions[0]);
     const height = parseInt(dimensions[1]);
 
-    if (parseInt(lines[1].trim()) > 24) {
+    if (isNaN(width) || isNaN(height)) {
+      result.message = "Board dimensions must be valid numbers!";
+      return result;
+    }
+
+    if (width <= 0 || height <= 0) {
+      result.message = "Board dimensions must be positive numbers!";
+      return result;
+    }
+
+    const carCount = parseInt(lines[1].trim());
+    if (isNaN(carCount)) {
+      result.message = "Car count must be a valid number!";
+      return result;
+    }
+
+    if (carCount > 24) {
       result.message = "Max 24 cars on board!";
       return result;
     }
@@ -62,6 +78,11 @@ export const parseFileContents = (content: string) => {
             return result;
           }
           continue;
+        }
+
+        if (!/^[A-Z]$/.test(char)) {
+          result.message = `Invalid car ID: "${char}". IDs must be single capital alphabetical characters.`;
+          return result;
         }
 
         for (let k = 0; k < newCars.length; k++) {
@@ -115,24 +136,106 @@ export const parseFileContents = (content: string) => {
       }
     }
 
-    if (newCars.length - 1 !== parseInt(lines[1].trim())) {
-      result.message = `Numbers of cars not the same as input (found ${newCars.length}, expected ${lines[1].trim()} + 1(primary car))`;
+    if (newCars.length - 1 !== carCount) {
+      result.message = `Numbers of cars not the same as input (found ${newCars.length}, expected ${carCount} + 1(primary car))`;
       return result;
     }
 
-    const exitGrid = {
-      row: exitPiece.pos.row ? exitPiece.pos.row + 1 : 0,
-      col: exitPiece.pos.col ? exitPiece.pos.col + 1 : 0,
-    };
+    for (let i = 0; i < newCars.length; i++) {
+      if (newCars[i].size <= 1) {
+        result.message = `Car ${newCars[i].id} has size below 2`;
+        return result;
+      }
+    }
+
+    if (exitPiece.orientation === "Horizontal" && exitPiece.pos.row === 0 && exitPiece.pos.col === 0) {
+      result.message = "No exit marker (K) found in the puzzle!";
+      return result;
+    }
+
+    const isExitTop = exitPiece.pos.row == 0 && lines[exitPiece.pos.row + 2].split("").length != width + 1;
+    const isExitLeft = exitPiece.pos.col == 0 && lines[exitPiece.pos.row + 2].split("").length == width + 1;
+    const isExitRight = exitPiece.pos.col == width && lines[exitPiece.pos.row + 2].split("").length == width + 1;
+    const isExitBottom = exitPiece.pos.row == height && lines[exitPiece.pos.row + 2].split("").length != width + 1;
+
+    const maxCol = lines.length - 2;
+    let maxRow = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].trim().split("").length > maxRow) {
+        maxRow = lines[i].trim().split("").length;
+      }
+    }
+
+    if (isExitTop) {
+      for (let i = 3; i < lines.length; i++) {
+        if (lines[i].trim().split("").length != width) {
+          result.message = `Row ${i} doesn't have ${width} columns!`;
+          return result;
+        }
+      }
+      if (maxCol != height + 1) {
+        console.log(maxCol);
+        result.message = `Amount of rows not the same as input!`;
+        return result;
+      }
+    } else if (isExitLeft) {
+      for (let i = 2; i < lines.length; i++) {
+        if (lines[i].split("").length != width + 1) {
+          result.message = `Row ${i} doesn't have ${width} columns!`;
+          return result;
+        }
+      }
+      if (maxCol != height) {
+        result.message = `Amount of rows not the same as input!`;
+        return result;
+      }
+    } else if (isExitRight) {
+      for (let i = 2; i < lines.length; i++) {
+        if (i == exitPiece.pos.row + 2 && lines[i].split("").length != width + 1) {
+          result.message = `Row ${i} contains exit but doesn't have ${width + 1} columns!`;
+          return result;
+        } else if (lines[i].trim().split("").length != width && i != exitPiece.pos.row + 2) {
+          result.message = `Row ${i} doesn't have ${width} columns!`;
+          return result;
+        }
+      }
+      if (maxCol != height) {
+        result.message = `Amount of rows not the same as input!`;
+        return result;
+      }
+    } else if (isExitBottom) {
+      for (let i = 2; i < lines.length - 1; i++) {
+        if (lines[i].trim().split("").length != width) {
+          if (i == exitPiece.pos.row - 2 && lines[i].trim().split("").length != width + 1) {
+            result.message = `Row ${i} doesn't have ${width} columns!`;
+            return result;
+          }
+        }
+      }
+      if (maxCol != height + 1) {
+        result.message = `Amount of rows not the same as input!`;
+        return result;
+      }
+    }
+
+    if (!(isExitTop || isExitLeft || isExitRight || isExitBottom)) {
+      result.message = `Exit must be at the edge!`;
+      return result;
+    }
 
     const gameCars: Car[] = newCars.map((piece) => ({
       id: piece.id,
       isVertical: piece.orientation === "Vertical",
       size: piece.size,
-      initialLeft: exitPiece.pos.col ? piece.pos.col : piece.pos.col - 1,
-      initialTop: exitPiece.pos.row ? piece.pos.row : piece.pos.row - 1,
+      initialLeft: isExitLeft ? piece.pos.col - 1 : piece.pos.col,
+      initialTop: isExitTop ? piece.pos.row - 1 : piece.pos.row,
       isPrimary: piece.id === "P",
     }));
+
+    const exitGrid = {
+      row: isExitTop ? exitPiece.pos.row : exitPiece.pos.row + 1,
+      col: isExitLeft ? exitPiece.pos.col : exitPiece.pos.col + 1,
+    };
 
     result.success = true;
     result.newCars = gameCars;

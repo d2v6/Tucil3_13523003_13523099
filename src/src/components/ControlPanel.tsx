@@ -197,12 +197,18 @@ const ControlPanel = ({
             !car.isPrimary &&
             !car.isVertical &&
             car.initialTop === exitPosition.row &&
-            ((exitPosition.col > primaryCar.initialLeft && car.initialLeft > primaryCar.initialLeft + primaryCar.size - 1 && car.initialLeft <= exitPosition.col) ||
-              (exitPosition.col < primaryCar.initialLeft && car.initialLeft + car.size - 1 >= exitPosition.col && car.initialLeft < primaryCar.initialLeft))
+            ((exitPosition.col > primaryCar.initialLeft &&
+              car.initialLeft > primaryCar.initialLeft + primaryCar.size - 1 &&
+              car.initialLeft <= exitPosition.col) ||
+              (exitPosition.col < primaryCar.initialLeft &&
+                car.initialLeft + car.size - 1 >= exitPosition.col &&
+                car.initialLeft < primaryCar.initialLeft))
         );
 
         if (blockingCars.length > 0) {
-          alert(`Warning: There are ${blockingCars.length} horizontal cars blocking the direct path to the exit. The puzzle is unsolvable.`);
+          alert(
+            `Warning: There are ${blockingCars.length} horizontal cars blocking the direct path to the exit. The puzzle is unsolvable.`
+          );
           return;
         }
       }
@@ -218,12 +224,18 @@ const ControlPanel = ({
             !car.isPrimary &&
             car.isVertical &&
             car.initialLeft === exitPosition.col &&
-            ((exitPosition.row > primaryCar.initialTop && car.initialTop > primaryCar.initialTop + primaryCar.size - 1 && car.initialTop <= exitPosition.row) ||
-              (exitPosition.row < primaryCar.initialTop && car.initialTop + car.size - 1 >= exitPosition.row && car.initialTop < primaryCar.initialTop))
+            ((exitPosition.row > primaryCar.initialTop &&
+              car.initialTop > primaryCar.initialTop + primaryCar.size - 1 &&
+              car.initialTop <= exitPosition.row) ||
+              (exitPosition.row < primaryCar.initialTop &&
+                car.initialTop + car.size - 1 >= exitPosition.row &&
+                car.initialTop < primaryCar.initialTop))
         );
 
         if (blockingCars.length > 0) {
-          alert(`Warning: There are ${blockingCars.length} vertical cars blocking the direct path to the exit. The puzzle is unsolvable.`);
+          alert(
+            `Warning: There are ${blockingCars.length} vertical cars blocking the direct path to the exit. The puzzle is unsolvable.`
+          );
           return;
         }
       }
@@ -292,17 +304,35 @@ const ControlPanel = ({
         <div className="flex items-center gap-2">
           <label className="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
             Upload
-            <input ref={fileInputRef} type="file" accept=".txt,text/plain" onChange={handleFileUpload} className="hidden" />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".txt,text/plain"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
           </label>
 
           <div className="flex items-center">
             <label className="mr-1 text-sm">Board Width:</label>
-            <input type="number" min="2" value={boardWidth} onChange={(e) => setBoardWidth(parseInt(e.target.value))} className="w-12 p-1 border border-gray-300 rounded text-sm" />
+            <input
+              type="number"
+              min="2"
+              value={boardWidth}
+              onChange={(e) => setBoardWidth(parseInt(e.target.value))}
+              className="w-12 p-1 border border-gray-300 rounded text-sm"
+            />
           </div>
 
           <div className="flex items-center">
             <label className="mr-1 text-sm">Board Height:</label>
-            <input type="number" min="2" value={boardHeight} onChange={(e) => setBoardHeight(parseInt(e.target.value))} className="w-12 p-1 border border-gray-300 rounded text-sm" />
+            <input
+              type="number"
+              min="2"
+              value={boardHeight}
+              onChange={(e) => setBoardHeight(parseInt(e.target.value))}
+              className="w-12 p-1 border border-gray-300 rounded text-sm"
+            />
           </div>
         </div>
 
@@ -382,7 +412,10 @@ const ControlPanel = ({
             />
           </div>
 
-          <button className="px-2 py-1 border border-gray-300 rounded text-sm hover:bg-gray-100 cursor-pointer" onClick={() => setInputCarOrientation(!inputCarOrientation)}>
+          <button
+            className="px-2 py-1 border border-gray-300 rounded text-sm hover:bg-gray-100 cursor-pointer"
+            onClick={() => setInputCarOrientation(!inputCarOrientation)}
+          >
             {inputCarOrientation ? "Vertical" : "Horizontal"}
           </button>
 
@@ -402,14 +435,22 @@ const ControlPanel = ({
           </div>
         </div>
 
-        <button onClick={() => addCar(inputCarLength, inputCarOrientation, isPrimary)} className="px-3 py-1 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600">
+        <button
+          onClick={() => addCar(inputCarLength, inputCarOrientation, isPrimary)}
+          className="px-3 py-1 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600"
+        >
           Add Car
         </button>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium">Solver:</label>
-          <select value={selectedAlgorithm} onChange={(e) => setSelectedAlgorithm(e.target.value)} className="p-1 border border-gray-300 rounded text-sm" disabled={isSolving}>
+          <select
+            value={selectedAlgorithm}
+            onChange={(e) => setSelectedAlgorithm(e.target.value)}
+            className="p-1 border border-gray-300 rounded text-sm"
+            disabled={isSolving}
+          >
             <option value="aStar">A*</option>
             <option value="gbfs">Greedy</option>
             <option value="ucs">UCS</option>
@@ -446,7 +487,13 @@ const ControlPanel = ({
           )}
         </div>
 
-        <button onClick={solveBoard} disabled={isSolving} className={`px-3 py-1 ${isSolving ? "bg-gray-400" : "bg-green-500 hover:bg-green-600"} text-white rounded text-sm`}>
+        <button
+          onClick={solveBoard}
+          disabled={isSolving}
+          className={`px-3 py-1 ${
+            isSolving ? "bg-gray-400" : "bg-green-500 hover:bg-green-600"
+          } text-white rounded text-sm`}
+        >
           {isSolving ? "Solving..." : "Solve"}
         </button>
       </div>
@@ -538,7 +585,12 @@ const ControlPanel = ({
           <button
             onClick={() => {
               const { board, pieces } = convertCarsToBoard();
-              downloadSolutionFile(board, solutionMoves, generateBoardStates(board, solutionMoves, pieces), `unblock_car_solution.txt`);
+              downloadSolutionFile(
+                board,
+                solutionMoves,
+                generateBoardStates(board, solutionMoves, pieces),
+                `unblock_car_solution.txt`
+              );
             }}
             disabled={solutionMoves.length === 0}
             className="px-3 py-1 bg-purple-500 text-white rounded text-xs disabled:bg-gray-300 hover:bg-purple-600"
