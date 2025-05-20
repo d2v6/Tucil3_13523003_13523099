@@ -1,5 +1,5 @@
 # Penyelesaian Puzzle Rush Hour
-![Aplikasi Solver](doc/UnblockCarGame.gif)
+![Aplikasi Solver](./doc/UnblockCarGame.gif)
 <div align="center">
   <h3>Penyelesai Puzzle menggunakan Algoritma Pencarian</h3>
   <p>Tugas Kecil 3 IF2211 Strategi Algoritma</p>
