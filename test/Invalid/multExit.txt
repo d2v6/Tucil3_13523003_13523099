@@ -1,0 +1,9 @@
+6 6
+10
+K
+PAB..F
+PABCDF
+GGGCDF
+.H....
+.HJ...
+LLJMM.K
