@@ -3,7 +3,6 @@ import type { Car, EdgeGrid, PieceMap, Board, Move } from "../lib/types";
 import { parseFileContents } from "../lib/helpers/validateInput";
 import { aStar } from "../lib/algo/aStar";
 import { gbfs } from "../lib/algo/gbfs";
-import { fringeSearch } from "../lib/algo/fringeSearch";
 import { ucs } from "../lib/algo/ucs";
 import { distanceToExit } from "../lib/heuristics/distanceToExit";
 import { blockingCars } from "../lib/heuristics/blockingCars";
@@ -11,6 +10,7 @@ import { recursiveBlockers } from "../lib/heuristics/recursiveBlockers";
 import { combinedHeuristic } from "../lib/heuristics/combinedHeuristic";
 import { moveNeededEstimate } from "../lib/heuristics/moveNeededEstimate";
 import { downloadSolutionFile, generateBoardStates } from "../lib/helpers/output";
+import { beamSearch } from "../lib/algo/beamSearch";
 
 interface ControlPanelProps {
   boardWidth: number;
@@ -76,6 +76,7 @@ const ControlPanel = ({
   const [isSolving, setIsSolving] = useState<boolean>(false);
   const [nodesFound, setNodesFound] = useState<number>(0);
   const [timeTaken, setTimeTaken] = useState<number>(0);
+  const [beamNumber, setBeamNumber] = useState<number>(1);
 
   const primaryCar = cars.find((car) => car.isPrimary);
   const isInitialState = solutionStep === -1;
@@ -254,8 +255,8 @@ const ControlPanel = ({
         case "gbfs":
           result = gbfs(board, pieces, heuristicFunction);
           break;
-        case "fringe":
-          result = fringeSearch(board, pieces, heuristicFunction);
+        case "beam":
+          result = beamSearch(board, pieces, heuristicFunction, beamNumber);
           break;
         case "ucs":
           result = ucs(board, pieces);
@@ -407,22 +408,38 @@ const ControlPanel = ({
           <select value={selectedAlgorithm} onChange={(e) => setSelectedAlgorithm(e.target.value)} className="p-1 border border-gray-300 rounded text-sm" disabled={isSolving}>
             <option value="aStar">A*</option>
             <option value="gbfs">Greedy</option>
-            <option value="fringe">Fringe</option>
             <option value="ucs">UCS</option>
+            <option value="beam">Beam</option>
           </select>
-
-          <select
-            value={selectedHeuristic}
-            onChange={(e) => setSelectedHeuristic(e.target.value)}
-            className="p-1 border border-gray-300 rounded text-sm"
-            disabled={isSolving || selectedAlgorithm === "ucs"}
-          >
-            <option value="combined">Combined</option>
-            <option value="distance">Distance</option>
-            <option value="blocking">Blocking</option>
-            <option value="recursive">Recursive</option>
-            <option value="moveNeeded">Move Est.</option>
-          </select>
+          {selectedAlgorithm !== "ucs" && (
+            <select
+              value={selectedHeuristic}
+              onChange={(e) => setSelectedHeuristic(e.target.value)}
+              className="p-1 border border-gray-300 rounded text-sm"
+              disabled={isSolving || selectedAlgorithm === "ucs"}
+            >
+              <option value="combined">Combined</option>
+              <option value="distance">Distance</option>
+              <option value="blocking">Blocking</option>
+              <option value="recursive">Recursive</option>
+              <option value="moveNeeded">Move Est.</option>
+            </select>
+          )}
+          {selectedAlgorithm === "beam" && (
+            <input
+              type="number"
+              className="p-1 border border-gray-300 rounded text-sm"
+              min={1}
+              value={beamNumber}
+              onChange={(e) => {
+                if (!e.target.value) {
+                  setBeamNumber(1);
+                } else {
+                  setBeamNumber(parseInt(e.target.value));
+                }
+              }}
+            />
+          )}
         </div>
 
         <button onClick={solveBoard} disabled={isSolving} className={`px-3 py-1 ${isSolving ? "bg-gray-400" : "bg-green-500 hover:bg-green-600"} text-white rounded text-sm`}>
