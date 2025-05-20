@@ -1,0 +1,8 @@
+6 6
+7
+ A..BCC
+ A..B..
+KA..PP.
+ ..DGG.
+ EEDF..
+ ..DF..
