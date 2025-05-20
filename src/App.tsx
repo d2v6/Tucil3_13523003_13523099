@@ -15,6 +15,7 @@ function App() {
   const [currentSolutionStep, setCurrentSolutionStep] = useState<number>(0);
   const [isAnimatingStep, setIsAnimatingStep] = useState<boolean>(false);
   const [isAutoPlaying, setIsAutoPlaying] = useState<boolean>(false);
+  const [isReverse, setIsReverse] = useState<boolean>(false);
   const [originalBoardState, setOriginalBoardState] = useState<Car[]>([]);
 
   const boardRef = useRef<HTMLDivElement>(null);
@@ -72,7 +73,7 @@ function App() {
     return () => {
       clearTimeout(animationTimer);
     };
-  }, [currentSolutionStep]);
+  }, [currentSolutionStep, isReverse]);
 
   useEffect(() => {
     const maxGridSize = 80;
@@ -251,6 +252,7 @@ function App() {
           stopAutoPlay={stopAutoPlay}
           originalBoardState={originalBoardState}
           setOriginalBoardState={setOriginalBoardState}
+          setIsReverse={setIsReverse}
         />
         <div className="flex flex-col items-center justify-center">
           <h2 className="font-bold text-3xl">Rules</h2>
@@ -298,9 +300,33 @@ function App() {
           inputGridSize={gridSize}
           deleteCarById={deleteCarById}
           isPrimary={car.isPrimary}
-          isExecutingMove={isAnimatingStep && solutionMoves.length > 0 && solutionMoves[currentSolutionStep]?.piece.id === car.id}
-          moveDirection={isAnimatingStep && solutionMoves.length > 0 && solutionMoves[currentSolutionStep]?.piece.id === car.id ? solutionMoves[currentSolutionStep].direction : undefined}
-          moveSteps={isAnimatingStep && solutionMoves.length > 0 && solutionMoves[currentSolutionStep]?.piece.id === car.id ? solutionMoves[currentSolutionStep].steps : undefined}
+          isExecutingMove={
+            isAnimatingStep &&
+            solutionMoves.length > 0 &&
+            (isReverse ? currentSolutionStep < solutionMoves.length - 1 && solutionMoves[currentSolutionStep + 1]?.piece.id === car.id : solutionMoves[currentSolutionStep]?.piece.id === car.id)
+          }
+          moveDirection={
+            isAnimatingStep && solutionMoves.length > 0
+              ? isReverse
+                ? currentSolutionStep < solutionMoves.length - 1 && solutionMoves[currentSolutionStep + 1]?.piece.id === car.id
+                  ? getReverseDirection(solutionMoves[currentSolutionStep + 1].direction)
+                  : undefined
+                : solutionMoves[currentSolutionStep]?.piece.id === car.id
+                ? solutionMoves[currentSolutionStep].direction
+                : undefined
+              : undefined
+          }
+          moveSteps={
+            isAnimatingStep && solutionMoves.length > 0
+              ? isReverse
+                ? currentSolutionStep < solutionMoves.length - 1 && solutionMoves[currentSolutionStep + 1]?.piece.id === car.id
+                  ? solutionMoves[currentSolutionStep + 1].steps
+                  : undefined
+                : solutionMoves[currentSolutionStep]?.piece.id === car.id
+                ? solutionMoves[currentSolutionStep].steps
+                : undefined
+              : undefined
+          }
         />
       ))}
     </main>

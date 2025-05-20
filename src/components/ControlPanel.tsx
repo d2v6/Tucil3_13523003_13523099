@@ -35,6 +35,7 @@ interface ControlPanelProps {
   stopAutoPlay?: () => void;
   originalBoardState: Car[];
   setOriginalBoardState: (cars: Car[]) => void;
+  setIsReverse: (bool: boolean) => void;
 }
 
 const ControlPanel = ({
@@ -59,6 +60,7 @@ const ControlPanel = ({
   stopAutoPlay,
   originalBoardState,
   setOriginalBoardState,
+  setIsReverse,
 }: ControlPanelProps) => {
   const [selectedAlgorithm, setSelectedAlgorithm] = useState<string>("aStar");
   const [selectedHeuristic, setSelectedHeuristic] = useState<string>("combined");
@@ -375,9 +377,9 @@ const ControlPanel = ({
                   if (isAutoPlaying && stopAutoPlay) {
                     stopAutoPlay();
                   }
+                  setIsReverse(true);
                   setSolutionStep(Math.max(-1, solutionStep - 1));
-
-                  if (solutionStep === 0 && originalBoardState.length > 0) {
+                  if (solutionStep === -1 && originalBoardState.length > 0) {
                     setCars([...originalBoardState]);
                   }
                 }}
@@ -393,6 +395,7 @@ const ControlPanel = ({
                   if (isAutoPlaying && stopAutoPlay) {
                     stopAutoPlay();
                   }
+                  setIsReverse(false);
                   setSolutionStep(Math.min(solutionMoves.length, solutionStep + 1));
                 }}
                 disabled={solutionStep === solutionMoves.length - 1}
