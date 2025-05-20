@@ -116,7 +116,7 @@ export const parseFileContents = (content: string) => {
     }
 
     if (newCars.length - 1 !== parseInt(lines[1].trim())) {
-      result.message = `Numbers of cars not the same as input (found ${newCars.length}, expected ${lines[1].trim()})`;
+      result.message = `Numbers of cars not the same as input (found ${newCars.length}, expected ${lines[1].trim()} + 1(primary car))`;
       return result;
     }
 

@@ -93,6 +93,10 @@ const ControlPanel = ({
       return;
     }
 
+    setCars([]);
+    setSelectedEdgeGrid(null);
+    setShowSolution(false);
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
