@@ -5,11 +5,6 @@
   <p>Tugas Kecil 3 IF2211 Strategi Algoritma</p>
 </div>
 
-## Deploy
-
-Aplikasi dapat dicoba secara online melalui link berikut:  
-[https://.vercel.app/](https://.vercel.app/)
-
 ## Gambaran Umum
 
 Penyelesaian Puzzle Rush Hour adalah aplikasi web yang menyelesaikan permainan puzzle Rush Hour klasik menggunakan berbagai algoritma pencarian. Puzzle terdiri dari grid dengan kendaraan berbagai ukuran. Tujuannya adalah memindahkan mobil merah (kendaraan target) ke pintu keluar dengan menggeser kendaraan lain agar tidak menghalangi jalan.
@@ -23,7 +18,7 @@ Aplikasi ini dikembangkan sebagai bagian dari tugas kecil mata kuliah Strategi A
   - Greedy Best-First Search
   - A\* Search
   - Uniform Cost Search (UCS)
-  - Fringe Search
+  - Beam Search
 - Berbagai fungsi heuristik
   - Distance
   - Blocking Vehicles
@@ -59,11 +54,10 @@ Aplikasi ini dikembangkan sebagai bagian dari tugas kecil mata kuliah Strategi A
    - Tidak menggunakan fungsi heuristik
    - Kurang efisien untuk ruang pencarian besar
 
-4. **Fringe Search**
-   - Algoritma hybrid yang menggabungkan aspek dari A\* dan depth-first search
-   - Menggunakan strategi batas (limit) dan iterasi yang lebih hemat memori
-   - Lebih efisien dalam penggunaan memori dibanding A\* standar
-   - Menjelajahi ruang pencarian dalam level f-cost yang meningkat
+4. **Beam Search**
+   - Varian dari algoritma Greedy Best First Search
+   - Membatasi simpul yang diproses dengan menggunakan beam
+   - Lebih efisien dalam penggunaan memori
 
 ## Fungsi Heuristik
 
